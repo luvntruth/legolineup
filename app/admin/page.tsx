@@ -145,26 +145,26 @@ export default function AdminPage() {
         {activeTab === "dashboard" && (
           <>
             {/* Actions */}
-            <div className="flex gap-3">
+            <div className="flex flex-col md:flex-row gap-4">
               <button 
                 onClick={load}
-                className="btn-primary flex-1"
+                className="btn-primary flex-1 py-5"
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="animate-spin-slow">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="animate-spin-slow">
                   <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C14.8273 3 17.3752 4.30561 19 6.33333M21 3V7H17" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-                수동 새로고침
+                <span className="text-xl">새로고침</span>
               </button>
               
               <button 
                 onClick={handleReset}
-                className="px-6 py-4 bg-white text-[#E60012] font-bold rounded-2xl border-2 border-[#E60012] flex items-center justify-center gap-2 hover:bg-red-50 transition-colors"
+                className="px-6 py-5 bg-white text-[#E60012] font-bold rounded-[2rem] border-2 border-[#E60012] flex items-center justify-center gap-2 hover:bg-red-50 transition-colors flex-1 shadow-[0_8px_16px_rgba(230,0,18,0.05)]"
                 title="데이터 초기화"
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M19 7L18.1327 19.1425C18.0579 20.1891 17.187 21 16.1378 21H7.86224C6.81296 21 5.94208 20.1891 5.86732 19.1425L5 7M10 11V17M14 11V17M15 7V4C15 3.44772 14.5523 3 14 3H10C9.44772 3 9 3.44772 9 4V7M4 7H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M19 7L18.1327 19.1425C18.0579 20.1891 17.187 21 16.1378 21H7.86224C6.81296 21 5.94208 21 5.86732 19.1425L5 7M10 11V17M14 11V17M15 7V4C15 3.44772 14.5523 3 14 3H10C9.44772 3 9 3.44772 9 4V7M4 7H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-                데이터 전체 초기화
+                <span className="text-xl">데이터 초기화</span>
               </button>
 
               <button 
@@ -177,16 +177,16 @@ export default function AdminPage() {
                   });
                   load();
                 }}
-                className={`px-6 py-4 font-bold rounded-2xl border-2 transition-colors flex-1 flex items-center justify-center gap-2
+                className={`px-6 py-5 font-bold rounded-[2rem] border-2 transition-colors flex-1 flex items-center justify-center gap-2 shadow-[0_8px_16px_rgba(0,0,0,0.05)]
                   ${(rows as any)._settings?.isTurnEntryEnabled 
                     ? "bg-green-500 border-green-500 text-white hover:bg-green-600" 
                     : "bg-white border-[#E60012] text-[#E60012] hover:bg-red-50"
                   }`}
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M13 2L3 14h9l-1 8L21 10h-9l1-8z" fill="currentColor"/>
                 </svg>
-                {(rows as any)._settings?.isTurnEntryEnabled ? "턴 수 입력 중단하기" : "턴 수 활성화 하기"}
+                <span className="text-xl">{(rows as any)._settings?.isTurnEntryEnabled ? "턴 수 중단" : "턴 수 활성화"}</span>
               </button>
             </div>
 
@@ -238,7 +238,7 @@ export default function AdminPage() {
                 </button>
               </div>
               
-              <div className="overflow-x-auto">
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-left">
                   <thead>
                     <tr className="bg-[#F8F9FA]">
@@ -291,7 +291,7 @@ export default function AdminPage() {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={3} className="px-6 py-20 text-center text-[#999999] font-medium italic">
+                        <td colSpan={4} className="px-6 py-20 text-center text-[#999999] font-medium italic">
                           제출된 데이터가 없습니다.
                         </td>
                       </tr>
@@ -299,17 +299,76 @@ export default function AdminPage() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Mobile Card List */}
+              <div className="md:hidden divide-y divide-[#EEEEEE]">
+                {rows.length > 0 ? (
+                  rows.slice().sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, 10).map((r) => (
+                    <div key={r.id} className="p-5 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-black text-[#999999]">팀 #{r.id}</span>
+                        <span className="text-xs text-[#999999] font-medium">{new Date(r.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-bold text-[#999999] uppercase tracking-wider">기록</p>
+                          <p className="text-2xl font-black text-[#E60012] tabular-nums">{r.record || "-"}</p>
+                        </div>
+                        <div className="text-right space-y-1">
+                          <p className="text-[10px] font-bold text-[#999999] uppercase tracking-wider">턴 수</p>
+                          {r.tValue !== "" ? (
+                            <span className="inline-block px-3 py-1 bg-red-50 text-[#E60012] rounded-full text-sm font-bold border border-red-100">
+                              {r.tValue}
+                            </span>
+                          ) : (
+                            <span className="inline-block px-3 py-1 bg-[#F8F9FA] text-[#999999] rounded-full text-sm font-bold border border-[#EEEEEE]">
+                              대기 중
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="pt-2">
+                        <p className="text-[10px] font-bold text-[#999999] uppercase tracking-wider mb-2">색상 순서</p>
+                        {r.colors ? (
+                          <div className="flex items-center gap-3 bg-[#F8F9FA] p-3 rounded-xl border border-[#EEEEEE]">
+                            <div className="flex items-center gap-1.5 font-bold text-[#666666] tracking-widest text-sm min-w-[50px]">
+                              {r.colors.join("")}
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              {r.colors.map((c, i) => (
+                                <div 
+                                  key={i} 
+                                  className="w-4 h-4 rounded-full border border-black/5 shadow-sm"
+                                  style={{ backgroundColor: getColorHex(c) }}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="bg-[#F8F9FA] p-3 rounded-xl border border-[#EEEEEE] text-center">
+                            <span className="text-xs font-bold text-[#CCCCCC] italic">제출 대기 중</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="px-6 py-20 text-center text-[#999999] font-medium italic">
+                    제출된 데이터가 없습니다.
+                  </div>
+                )}
+              </div>
             </div>
           </>
         )}
 
         {/* Stats View */}
         {activeTab === "stats" && (
-          <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in">
             {/* Top Color Sequences */}
-            <section className="card-premium overflow-hidden">
+            <section className="card-premium overflow-hidden h-fit">
               <div className="px-6 py-5 border-b border-[#EEEEEE] bg-white">
-                <h2 className="text-lg font-bold text-[#1A1A1A]">가장 많이 나온 색상 순서 (Top 3)</h2>
+                <h2 className="text-lg font-bold text-[#1A1A1A]">최빈 색상 순서 (Top 3)</h2>
               </div>
               <div className="p-6 bg-white space-y-4">
                 {topColors.length > 0 ? topColors.map(([colorsStr, count], idx) => {
@@ -317,25 +376,27 @@ export default function AdminPage() {
                   return (
                     <div key={colorsStr} className="flex items-center justify-between p-4 bg-[#F8F9FA] rounded-2xl border border-[#EEEEEE]">
                       <div className="flex items-center gap-4">
-                        <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center font-black text-[#E60012] shadow-sm">
+                        <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center font-black text-[#E60012] shadow-sm text-sm">
                           {idx + 1}
                         </div>
                         <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 font-bold text-[#666666] tracking-widest text-xs sm:text-sm">
+                            {colorsStr.replace(/,/g, "") || "빈 데이터"}
+                          </div>
+                          <div className="flex items-center gap-1">
                             {colors.map((c, i) => (
                               <div 
                                 key={i} 
-                                className="w-6 h-6 rounded-full border border-black/5 shadow-sm"
+                                className="w-4 h-4 rounded-full border border-black/5 shadow-sm"
                                 style={{ backgroundColor: getColorHex(c) }}
                               />
                             ))}
                           </div>
-                          <span className="text-sm font-bold text-[#666666] tracking-widest">{colorsStr.replace(/,/g, "")}</span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                         <span className="text-xl font-black text-[#1A1A1A]">{count}</span>
-                         <span className="text-sm font-bold text-[#999999]">팀</span>
+                      <div className="flex items-center gap-1">
+                         <span className="text-lg font-black text-[#1A1A1A]">{count}</span>
+                         <span className="text-xs font-bold text-[#999999]">팀</span>
                       </div>
                     </div>
                   );
@@ -346,25 +407,25 @@ export default function AdminPage() {
             </section>
 
             {/* Top T-Values */}
-            <section className="card-premium overflow-hidden">
+            <section className="card-premium overflow-hidden h-fit">
               <div className="px-6 py-5 border-b border-[#EEEEEE] bg-white">
-                <h2 className="text-lg font-bold text-[#1A1A1A]">가장 많이 선택된 턴 수 (Top 3)</h2>
+                <h2 className="text-lg font-bold text-[#1A1A1A]">최빈 턴 수 (Top 3)</h2>
               </div>
               <div className="p-6 bg-white space-y-4">
                 {topTValues.length > 0 ? topTValues.map(([tValueStr, count], idx) => {
                   return (
                     <div key={tValueStr} className="flex items-center justify-between p-4 bg-[#F8F9FA] rounded-2xl border border-[#EEEEEE]">
                       <div className="flex items-center gap-4">
-                        <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center font-black text-[#E60012] shadow-sm">
+                        <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center font-black text-[#E60012] shadow-sm text-sm">
                           {idx + 1}
                         </div>
                         <span className="px-4 py-1.5 bg-red-50 text-[#E60012] rounded-full text-sm font-bold border border-red-100">
                           {tValueStr}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2">
-                         <span className="text-xl font-black text-[#1A1A1A]">{count}</span>
-                         <span className="text-sm font-bold text-[#999999]">팀</span>
+                      <div className="flex items-center gap-1">
+                         <span className="text-lg font-black text-[#1A1A1A]">{count}</span>
+                         <span className="text-xs font-bold text-[#999999]">팀</span>
                       </div>
                     </div>
                   );
@@ -461,7 +522,7 @@ export default function AdminPage() {
       {/* Full View Modal */}
       {isFullView && (
         <div className="fixed inset-0 z-50 bg-white flex flex-col animate-fade-in">
-          <header className="px-6 py-4 border-b border-[#EEEEEE] flex items-center justify-between sticky top-0 bg-white z-10">
+          <header className="px-6 py-4 border-b border-[#EEEEEE] flex items-center justify-between sticky top-0 bg-white z-10 h-16 sm:h-20">
             <h2 className="text-xl font-bold text-[#1A1A1A]">전체 데이터 내역</h2>
             <button 
               onClick={() => setIsFullView(false)}
@@ -473,107 +534,170 @@ export default function AdminPage() {
             </button>
           </header>
           
-          <div className="flex-1 overflow-y-auto px-6 py-4">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="bg-[#F8F9FA] sticky top-0 z-10">
-                  <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest leading-none">팀 ID</th>
-                  <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest text-center leading-none">기록</th>
-                  <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest text-center leading-none">색상 순서</th>
-                  <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest text-right leading-none">턴 수</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#EEEEEE]">
+          <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 pb-24">
+            <div className="card-premium overflow-hidden">
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="bg-[#F8F9FA] sticky top-0 z-10">
+                      <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest leading-none">팀 ID</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest text-center leading-none">기록</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest text-center leading-none">색상 순서</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest text-right leading-none">턴 수</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#EEEEEE]">
+                    {rows.length > 0 ? (
+                      rows.slice().sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).map((r) => (
+                        <tr key={r.id} className="hover:bg-[#F8F9FA] transition-colors">
+                          <td className="px-6 py-5 font-bold text-[#1A1A1A]">#{r.id}</td>
+                          <td className="px-6 py-5 text-center font-black text-[#E60012] tabular-nums">
+                            {r.record || "-"}
+                          </td>
+                          <td className="px-6 py-5">
+                            <div className="flex items-center justify-center gap-3">
+                              {r.colors ? (
+                                <>
+                                  <div className="flex items-center gap-1.5">
+                                    {r.colors.map((c, i) => (
+                                      <div 
+                                        key={i} 
+                                        className="w-4 h-4 rounded-full border border-black/5 shadow-sm"
+                                        style={{ backgroundColor: getColorHex(c) }}
+                                      />
+                                    ))}
+                                  </div>
+                                  <span className="text-sm font-bold text-[#666666] tracking-widest">{r.colors.join("")}</span>
+                                </>
+                              ) : (
+                                <span className="text-xs font-bold text-[#CCCCCC] italic">제출 대기</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-5 text-right">
+                            {r.tValue !== "" ? (
+                              <span className="px-3 py-1 bg-red-50 text-[#E60012] rounded-full text-xs font-bold border border-red-100">
+                                {r.tValue}
+                              </span>
+                            ) : (
+                              <span className="px-3 py-1 bg-[#F8F9FA] text-[#999999] rounded-full text-xs font-bold border border-[#EEEEEE]">
+                                대기 중
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={4} className="px-6 py-20 text-center text-[#999999] font-medium italic">
+                          제출된 데이터가 없습니다.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Card List for Full View */}
+              <div className="md:hidden divide-y divide-[#EEEEEE]">
                 {rows.length > 0 ? (
                   rows.slice().sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).map((r) => (
-                    <tr key={r.id} className="hover:bg-[#F8F9FA] transition-colors">
-                      <td className="px-6 py-5 font-bold text-[#1A1A1A]">#{r.id}</td>
-                      <td className="px-6 py-5 text-center font-black text-[#E60012] tabular-nums">
-                        {r.record || "-"}
-                      </td>
-                      <td className="px-6 py-5">
-                        <div className="flex items-center justify-center gap-3">
-                          {r.colors ? (
-                            <>
-                              <div className="flex items-center gap-1.5">
-                                {r.colors.map((c, i) => (
-                                  <div 
-                                    key={i} 
-                                    className="w-4 h-4 rounded-full border border-black/5 shadow-sm"
-                                    style={{ backgroundColor: getColorHex(c) }}
-                                  />
-                                ))}
-                              </div>
-                              <span className="text-sm font-bold text-[#666666] tracking-widest">{r.colors.join("")}</span>
-                            </>
+                    <div key={r.id} className="p-5 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-black text-[#999999]">팀 #{r.id}</span>
+                        <span className="text-xs text-[#999999] font-medium">{new Date(r.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-bold text-[#999999] uppercase tracking-wider">기록</p>
+                          <p className="text-2xl font-black text-[#E60012] tabular-nums">{r.record || "-"}</p>
+                        </div>
+                        <div className="text-right space-y-1">
+                          <p className="text-[10px] font-bold text-[#999999] uppercase tracking-wider">턴 수</p>
+                          {r.tValue !== "" ? (
+                            <span className="inline-block px-3 py-1 bg-red-50 text-[#E60012] rounded-full text-sm font-bold border border-red-100">
+                              {r.tValue}
+                            </span>
                           ) : (
-                            <span className="text-xs font-bold text-[#CCCCCC] italic">제출 대기</span>
+                            <span className="inline-block px-3 py-1 bg-[#F8F9FA] text-[#999999] rounded-full text-sm font-bold border border-[#EEEEEE]">
+                              대기 중
+                            </span>
                           )}
                         </div>
-                      </td>
-                      <td className="px-6 py-5 text-right">
-                        {r.tValue !== "" ? (
-                          <span className="px-3 py-1 bg-red-50 text-[#E60012] rounded-full text-xs font-bold border border-red-100">
-                            {r.tValue}
-                          </span>
+                      </div>
+                      <div className="pt-2">
+                        <p className="text-[10px] font-bold text-[#999999] uppercase tracking-wider mb-2">색상 순서</p>
+                        {r.colors ? (
+                          <div className="flex items-center gap-3 bg-[#F8F9FA] p-3 rounded-xl border border-[#EEEEEE]">
+                            <div className="flex items-center gap-1.5 font-bold text-[#666666] tracking-widest text-sm min-w-[30px]">
+                              {r.colors.join("")}
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              {r.colors.map((c, i) => (
+                                <div 
+                                  key={i} 
+                                  className="w-4 h-4 rounded-full border border-black/5 shadow-sm"
+                                  style={{ backgroundColor: getColorHex(c) }}
+                                />
+                              ))}
+                            </div>
+                          </div>
                         ) : (
-                          <span className="px-3 py-1 bg-[#F8F9FA] text-[#999999] rounded-full text-xs font-bold border border-[#EEEEEE]">
-                            대기 중
-                          </span>
+                          <div className="bg-[#F8F9FA] p-3 rounded-xl border border-[#EEEEEE] text-center">
+                            <span className="text-xs font-bold text-[#CCCCCC] italic">제출 대기 중</span>
+                          </div>
                         )}
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   ))
                 ) : (
-                  <tr>
-                    <td colSpan={3} className="px-6 py-20 text-center text-[#999999] font-medium italic">
-                      제출된 데이터가 없습니다.
-                    </td>
-                  </tr>
+                  <div className="px-6 py-20 text-center text-[#999999] font-medium italic">
+                    제출된 데이터가 없습니다.
+                  </div>
                 )}
-              </tbody>
-            </table>
+              </div>
+            </div>
           </div>
         </div>
       )}
 
       {/* Bottom Tabs Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#EEEEEE] px-4 py-3 flex items-center justify-between z-40 max-w-4xl mx-auto shadow-[0_-4px_16px_rgba(0,0,0,0.04)] rounded-t-[2rem]">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#EEEEEE] px-4 py-3 pb-6 sm:pb-3 flex items-center justify-between z-40 max-w-4xl mx-auto shadow-[0_-8px_24px_rgba(0,0,0,0.06)] rounded-t-[2.5rem]">
         <button 
           onClick={() => setActiveTab("dashboard")}
-          className={`flex flex-col items-center gap-1 flex-1 transition-all ${activeTab === "dashboard" ? "text-[#E60012]" : "text-[#CCCCCC]"}`}
+          className={`flex flex-col items-center gap-1.5 flex-1 transition-all ${activeTab === "dashboard" ? "text-[#E60012]" : "text-[#CCCCCC]"}`}
         >
-          <div className={`p-2 rounded-xl ${activeTab === "dashboard" ? "bg-red-50" : ""}`}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <div className={`p-2.5 rounded-2xl transition-colors ${activeTab === "dashboard" ? "bg-red-50" : "hover:bg-gray-50"}`}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h6v6h-6v-6z" fill="currentColor"/>
             </svg>
           </div>
-          <span className="text-[10px] font-bold">제출 현황</span>
+          <span className="text-[10px] font-black uppercase tracking-tight">현황</span>
         </button>
 
         <button 
           onClick={() => setActiveTab("recorder")}
-          className={`flex flex-col items-center gap-1 flex-1 transition-all ${activeTab === "recorder" ? "text-[#E60012]" : "text-[#CCCCCC]"}`}
+          className={`flex flex-col items-center gap-1.5 flex-1 transition-all ${activeTab === "recorder" ? "text-[#E60012]" : "text-[#CCCCCC]"}`}
         >
-          <div className={`p-2 rounded-xl ${activeTab === "recorder" ? "bg-red-50" : ""}`}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <div className={`p-2.5 rounded-2xl transition-colors ${activeTab === "recorder" ? "bg-red-50" : "hover:bg-gray-50"}`}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.5"/>
                 <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
             </svg>
           </div>
-          <span className="text-[10px] font-bold">기록 입력</span>
+          <span className="text-[10px] font-black uppercase tracking-tight">입력</span>
         </button>
 
         <button 
           onClick={() => setActiveTab("stats")}
-          className={`flex flex-col items-center gap-1 flex-1 transition-all ${activeTab === "stats" ? "text-[#E60012]" : "text-[#CCCCCC]"}`}
+          className={`flex flex-col items-center gap-1.5 flex-1 transition-all ${activeTab === "stats" ? "text-[#E60012]" : "text-[#CCCCCC]"}`}
         >
-          <div className={`p-2 rounded-xl ${activeTab === "stats" ? "bg-red-50" : ""}`}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <div className={`p-2.5 rounded-2xl transition-colors ${activeTab === "stats" ? "bg-red-50" : "hover:bg-gray-50"}`}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M18 20V10M12 20V4M6 20v-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
-          <span className="text-[10px] font-bold">데이터 통계</span>
+          <span className="text-[10px] font-black uppercase tracking-tight">통계</span>
         </button>
       </nav>
     </main>
