@@ -72,18 +72,15 @@ export default function AdminPage() {
     }
   };
 
-  // Calculate stats
-  const colorFreqs: Record<string, number> = {};
-  const tValueFreqs: Record<string, number> = {};
-  
-  rows.forEach(r => {
-    if (r.colors) {
-      const colorStr = r.colors.join(",");
-      colorFreqs[colorStr] = (colorFreqs[colorStr] || 0) + 1;
-    }
-    if (r.tValue !== "") {
-      tValueFreqs[r.tValue] = (tValueFreqs[r.tValue] || 0) + 1;
-    }
+  // Calculate stats (Insight data preparation)
+  const validRows = rows.filter(r => r.record && r.tValue !== "");
+  const sortedByRecord = [...validRows].sort((a, b) => {
+    const parse = (rec: string) => {
+      if (!rec) return Infinity;
+      const match = rec.match(/(\d+)'\s*(\d+)"/);
+      return match ? parseInt(match[1]) * 60 + parseInt(match[2]) : Infinity;
+    };
+    return parse(a.record) - parse(b.record);
   });
 
   const handleRecordSubmit = async () => {
@@ -112,15 +109,7 @@ export default function AdminPage() {
     }
   };
 
-  const topColors = Object.entries(colorFreqs)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3);
-  
-  const topTValues = Object.entries(tValueFreqs)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3);
-
-  // --- Insight Logic ---
+  // --- Insight Logic (Unified) ---
   const parseRecordToSeconds = (record: string) => {
     if (!record) return Infinity;
     const match = record.match(/(\d+)'\s*(\d+)"/);
@@ -128,11 +117,9 @@ export default function AdminPage() {
     return parseInt(match[1]) * 60 + parseInt(match[2]);
   };
 
-  const validRows = rows.filter(r => r.record && r.tValue !== "");
-  const sortedByRecord = [...validRows].sort((a, b) => parseRecordToSeconds(a.record) - parseRecordToSeconds(b.record));
   const top20Percent = sortedByRecord.slice(0, Math.ceil(validRows.length * 0.2) || 1);
-
   const insights = [];
+
   if (validRows.length >= 3) {
     // 1. 기록이 짧은 팀들의 특징
     const top20Colors = new Set(top20Percent.map(r => r.colors?.join(",") || ""));
@@ -413,103 +400,45 @@ export default function AdminPage() {
 
         {/* Stats View */}
         {activeTab === "stats" && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in">
-            {/* Top Color Sequences */}
-            <section className="card-premium overflow-hidden h-fit">
-              <div className="px-6 py-5 border-b border-[#EEEEEE] bg-white">
-                <h2 className="text-lg font-bold text-[#1A1A1A]">최빈 색상 순서 (Top 3)</h2>
-              </div>
-              <div className="p-6 bg-white space-y-4">
-                {topColors.length > 0 ? topColors.map(([colorsStr, count], idx) => {
-                  const colors = colorsStr.split(",");
-                  return (
-                    <div key={colorsStr} className="flex items-center justify-between p-4 bg-[#F8F9FA] rounded-2xl border border-[#EEEEEE]">
-                      <div className="flex items-center gap-4">
-                        <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center font-black text-[#E60012] shadow-sm text-sm">
-                          {idx + 1}
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-1.5 font-bold text-[#666666] tracking-widest text-xs sm:text-sm">
-                            {colorsStr.replace(/,/g, "") || "빈 데이터"}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            {colors.map((c, i) => (
-                              <div 
-                                key={i} 
-                                className="w-4 h-4 rounded-full border border-black/5 shadow-sm"
-                                style={{ backgroundColor: getColorHex(c) }}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1">
-                         <span className="text-lg font-black text-[#1A1A1A]">{count}</span>
-                         <span className="text-xs font-bold text-[#999999]">팀</span>
-                      </div>
-                    </div>
-                  );
-                }) : (
-                  <p className="text-center text-[#999999] font-medium italic py-8">데이터가 부족합니다.</p>
-                )}
-              </div>
-            </section>
-
-            {/* Top T-Values */}
-            <section className="card-premium overflow-hidden h-fit">
-              <div className="px-6 py-5 border-b border-[#EEEEEE] bg-white">
-                <h2 className="text-lg font-bold text-[#1A1A1A]">최빈 턴 수 (Top 3)</h2>
-              </div>
-              <div className="p-6 bg-white space-y-4">
-                {topTValues.length > 0 ? topTValues.map(([tValueStr, count], idx) => {
-                  return (
-                    <div key={tValueStr} className="flex items-center justify-between p-4 bg-[#F8F9FA] rounded-2xl border border-[#EEEEEE]">
-                      <div className="flex items-center gap-4">
-                        <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center font-black text-[#E60012] shadow-sm text-sm">
-                          {idx + 1}
-                        </div>
-                        <span className="px-4 py-1.5 bg-red-50 text-[#E60012] rounded-full text-sm font-bold border border-red-100">
-                          {tValueStr}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                         <span className="text-lg font-black text-[#1A1A1A]">{count}</span>
-                         <span className="text-xs font-bold text-[#999999]">팀</span>
-                      </div>
-                    </div>
-                  );
-                }) : (
-                  <p className="text-center text-[#999999] font-medium italic py-8">데이터가 부족합니다.</p>
-                )}
-              </div>
-            </section>
-
-            {/* AI Learning Insights */}
-            <section className="lg:col-span-2 card-premium overflow-hidden border-2 border-red-50">
+          <div className="animate-fade-in max-w-4xl mx-auto">
+            {/* AI Learning Insights (Now Mainized) */}
+            <section className="card-premium overflow-hidden border-2 border-red-50">
               <div className="px-6 py-5 border-b border-red-100 bg-red-50/30 flex items-center gap-2">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   <path d="M2 17L12 22L22 17" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   <path d="M2 12L12 17L22 12" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-                <h2 className="text-lg font-bold text-[#E60012]">데이터 학습 인사이트</h2>
+                <h2 className="text-xl font-bold text-[#E60012]">데이터 학습 인사이트</h2>
               </div>
-              <div className="p-6 bg-white grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="p-8 bg-white space-y-8">
                 {insights.length > 0 ? insights.map((insight, idx) => (
-                  <div key={idx} className={`p-5 rounded-2xl border ${
-                    insight.type === 'success' ? 'bg-green-50 border-green-100' : 'bg-blue-50 border-blue-100'
+                  <div key={idx} className={`p-6 rounded-2xl border-2 transition-all hover:shadow-md ${
+                    insight.type === 'success' ? 'bg-green-50/50 border-green-100' : 'bg-blue-50/50 border-blue-100'
                   }`}>
-                    <h3 className={`text-sm font-black mb-2 ${
-                      insight.type === 'success' ? 'text-green-700' : 'text-blue-700'
-                    }`}>{insight.title}</h3>
-                    <p className="text-sm text-[#444444] leading-relaxed font-medium">
-                      {insight.content}
-                    </p>
+                    <div className="flex items-start gap-4">
+                      <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${
+                        insight.type === 'success' ? 'bg-green-500' : 'bg-blue-500'
+                      }`} />
+                      <div>
+                        <h3 className={`text-lg font-black mb-2 ${
+                          insight.type === 'success' ? 'text-green-700' : 'text-blue-700'
+                        }`}>{insight.title}</h3>
+                        <p className="text-base text-[#444444] leading-relaxed font-medium">
+                          {insight.content}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 )) : (
-                  <div className="md:col-span-2 py-10 text-center">
-                    <p className="text-[#999999] font-medium italic">데이터가 쌓이면 실시간 분석 인사이트가 여기에 표시됩니다.</p>
-                    <p className="text-[10px] text-[#CCCCCC] mt-2 uppercase tracking-widest">실시간 분석 엔진 가동 중</p>
+                  <div className="py-20 text-center space-y-4">
+                    <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3" stroke="#E60012" strokeWidth="2" strokeLinecap="round"/>
+                       </svg>
+                    </div>
+                    <p className="text-[#999999] text-lg font-bold italic">데이터가 쌓이면 실시간 분석 인사이트가 여기에 표시됩니다.</p>
+                    <p className="text-xs text-[#CCCCCC] uppercase tracking-[0.2em] font-black">Real-time Analysis Engine Initializing...</p>
                   </div>
                 )}
               </div>
