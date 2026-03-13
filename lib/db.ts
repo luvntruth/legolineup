@@ -13,7 +13,7 @@ export type SubmissionRow = {
 export async function upsertSubmission(id: number, colors: string[], tValue: string) {
   if (id < ID_MIN || id > ID_MAX) throw new Error("ID out of range");
   if (colors.length !== 5 || !colors.every((c: any) => COLORS.includes(c))) throw new Error("Invalid colors");
-  if (!T_VALUES.includes(tValue as any)) throw new Error("Invalid tValue");
+  if (tValue !== "" && !T_VALUES.includes(tValue as any)) throw new Error("Invalid tValue");
 
   const now = new Date().toISOString();
   const docRef = doc(db, "submissions", String(id));

@@ -19,7 +19,7 @@ export default function AdminPage() {
 
   const load = async () => {
     try {
-      const res = await fetch("/api/data");
+      const res = await fetch(`/api/data?t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json();
       setRange(data.range);
       setRows(data.submissions ?? []);
@@ -70,7 +70,9 @@ export default function AdminPage() {
   rows.forEach(r => {
     const colorStr = r.colors.join(",");
     colorFreqs[colorStr] = (colorFreqs[colorStr] || 0) + 1;
-    tValueFreqs[r.tValue] = (tValueFreqs[r.tValue] || 0) + 1;
+    if (r.tValue !== "") {
+      tValueFreqs[r.tValue] = (tValueFreqs[r.tValue] || 0) + 1;
+    }
   });
 
   const topColors = Object.entries(colorFreqs)
@@ -206,9 +208,15 @@ export default function AdminPage() {
                             </div>
                           </td>
                           <td className="px-6 py-5 text-right">
-                            <span className="px-3 py-1 bg-red-50 text-[#E60012] rounded-full text-xs font-bold border border-red-100">
-                              {r.tValue}
-                            </span>
+                            {r.tValue !== "" ? (
+                              <span className="px-3 py-1 bg-red-50 text-[#E60012] rounded-full text-xs font-bold border border-red-100">
+                                {r.tValue}
+                              </span>
+                            ) : (
+                              <span className="px-3 py-1 bg-[#F8F9FA] text-[#999999] rounded-full text-xs font-bold border border-[#EEEEEE]">
+                                대기 중
+                              </span>
+                            )}
                           </td>
                         </tr>
                       ))
@@ -344,9 +352,15 @@ export default function AdminPage() {
                         </div>
                       </td>
                       <td className="px-6 py-5 text-right">
-                        <span className="px-3 py-1 bg-red-50 text-[#E60012] rounded-full text-xs font-bold border border-red-100">
-                          {r.tValue}
-                        </span>
+                        {r.tValue !== "" ? (
+                          <span className="px-3 py-1 bg-red-50 text-[#E60012] rounded-full text-xs font-bold border border-red-100">
+                            {r.tValue}
+                          </span>
+                        ) : (
+                          <span className="px-3 py-1 bg-[#F8F9FA] text-[#999999] rounded-full text-xs font-bold border border-[#EEEEEE]">
+                            대기 중
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))
