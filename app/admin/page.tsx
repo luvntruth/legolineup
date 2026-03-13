@@ -29,6 +29,23 @@ export default function AdminPage() {
     }
   };
 
+  const handleReset = async () => {
+    if (!window.confirm("정말로 모든 데이터를 초기화하시겠습니까?\n이 작업은 되돌릴 수 없습니다.")) {
+      return;
+    }
+    try {
+      const res = await fetch("/api/reset", { method: "POST" });
+      if (res.ok) {
+        alert("데이터가 완전히 초기화되었습니다.");
+        load();
+      } else {
+        alert("초기화 실패");
+      }
+    } catch (e) {
+      alert("네트워크 오류");
+    }
+  };
+
   useEffect(() => {
     load();
     const id = setInterval(load, 5000);
@@ -88,16 +105,29 @@ export default function AdminPage() {
       <div className="px-6 py-8 space-y-8 max-w-4xl mx-auto">
         {activeTab === "dashboard" && (
           <>
-            {/* Manual Refresh Button */}
-            <button 
-              onClick={load}
-              className="btn-primary"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="animate-spin-slow">
-                <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C14.8273 3 17.3752 4.30561 19 6.33333M21 3V7H17" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              수동 새로고침
-            </button>
+            {/* Actions */}
+            <div className="flex gap-3">
+              <button 
+                onClick={load}
+                className="btn-primary flex-1"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="animate-spin-slow">
+                  <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C14.8273 3 17.3752 4.30561 19 6.33333M21 3V7H17" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                수동 새로고침
+              </button>
+              
+              <button 
+                onClick={handleReset}
+                className="px-6 py-4 bg-white text-[#E60012] font-bold rounded-2xl border-2 border-[#E60012] flex items-center justify-center gap-2 hover:bg-red-50 transition-colors"
+                title="데이터 초기화"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M19 7L18.1327 19.1425C18.0579 20.1891 17.187 21 16.1378 21H7.86224C6.81296 21 5.94208 20.1891 5.86732 19.1425L5 7M10 11V17M14 11V17M15 7V4C15 3.44772 14.5523 3 14 3H10C9.44772 3 9 3.44772 9 4V7M4 7H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                데이터 초기화
+              </button>
+            </div>
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

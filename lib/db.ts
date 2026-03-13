@@ -1,4 +1,4 @@
-import { doc, setDoc, getDoc, collection, getDocs, query, orderBy } from "firebase/firestore";
+import { doc, setDoc, getDoc, collection, getDocs, query, orderBy, deleteDoc } from "firebase/firestore";
 import { db } from "./firebase";
 import { COLORS, T_VALUES } from "./constants";
 import { ID_MIN, ID_MAX } from "./config";
@@ -57,7 +57,13 @@ export async function getAllSubmissions() {
   }));
 }
 
+export async function clearAllSubmissions() {
+  const colRef = collection(db, "submissions");
+  const snap = await getDocs(colRef);
+  const promises = snap.docs.map(d => deleteDoc(d.ref));
+  await Promise.all(promises);
+}
+
 export function getRange() {
   return { min: ID_MIN, max: ID_MAX };
 }
-
