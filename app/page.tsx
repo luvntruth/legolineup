@@ -6,7 +6,8 @@ import {
   DndContext,
   closestCenter,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   DragEndEvent,
@@ -49,9 +50,15 @@ export default function HomePage() {
   }, [id]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
+    useSensor(MouseSensor, {
       activationConstraint: {
         distance: 5,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 200,
+        tolerance: 5,
       },
     }),
     useSensor(KeyboardSensor, {
@@ -140,10 +147,13 @@ export default function HomePage() {
 
         {/* Color Sequence */}
         <section>
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-2">
             <h2 className="text-lg font-bold text-[#1A1A1A]">색상 순서 선택</h2>
             <span className="px-3 py-1 bg-red-50 text-[#E60012] text-[10px] font-bold rounded-full uppercase tracking-tighter">드래그하여 순서 변경</span>
           </div>
+          <p className="text-sm text-[#666666] mb-4">
+            원하는 색상 블록을 <strong className="text-[#E60012] font-semibold">위아래로 길게 꾹 누른 상태로 드래그</strong>하여 순서를 변경해보세요!
+          </p>
           
           <DndContext
             sensors={sensors}
