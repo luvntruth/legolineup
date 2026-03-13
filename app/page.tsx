@@ -31,13 +31,10 @@ export default function HomePage() {
     fetch(`/api/data`).then((res) => res.json()).then((d) => {
       if (d?.range) setRange(d.range);
     });
-    const savedId = localStorage.getItem("participantId");
-    if (savedId) setId(Number(savedId));
   }, []);
 
   useEffect(() => {
     if (id === "") return;
-    localStorage.setItem("participantId", String(id));
     fetch(`/api/participant?id=${id}`)
       .then((res) => res.json())
       .then((d) => {
