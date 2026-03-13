@@ -10,6 +10,6 @@ export async function GET(req: Request) {
   if (Number.isNaN(id) || id < range.min || id > range.max) {
     return NextResponse.json({ error: `ID must be ${range.min}~${range.max}` }, { status: 400 });
   }
-  const data = getSubmission(id);
+  const data = await getSubmission(id);
   return NextResponse.json({ range, submission: data ?? null });
 }

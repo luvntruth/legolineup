@@ -17,7 +17,7 @@ export async function POST(req: Request) {
     if (parsed.id < min || parsed.id > max) {
       return NextResponse.json({ error: `ID는 ${min}~${max} 범위만 허용됩니다.` }, { status: 400 });
     }
-    const saved = upsertSubmission(parsed.id, parsed.colors, parsed.tValue);
+    const saved = await upsertSubmission(parsed.id, parsed.colors, parsed.tValue);
     return NextResponse.json({ ok: true, submission: saved });
   } catch (err: any) {
     return NextResponse.json({ error: err?.message ?? "Invalid payload" }, { status: 400 });
