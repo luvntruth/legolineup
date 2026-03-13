@@ -45,22 +45,39 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    if (id === "") return;
+    if (id === "") {
+      setStep(1);
+      setColors([...COLORS]);
+      setTValue("");
+      return;
+    }
     fetch(`/api/participant?id=${id}&t=${Date.now()}`, { cache: "no-store" })
       .then((res) => res.json())
       .then((d) => {
         if (d?.submission) {
-          setColors(d.submission.colors);
-          setTValue(d.submission.tValue);
-          // Only auto-jump to step 4 if final submission (tValue) is fully present.
-          // Do NOT auto-jump to step 2/3 just because colors are there; 
-          // let the user see the current colors and press submit explicitly.
-          if (d.submission.tValue !== "") {
-            setStep(4);
+          if (d.submission.colors) {
+            setColors(d.submission.colors);
+          } else {
+            setColors([...COLORS]);
           }
+          setTValue(d.submission.tValue);
+          
+          if (d.submission.tValue && d.submission.tValue !== "") {
+            setStep(4);
+          } else {
+            setStep(1);
+          }
+        } else {
+          setStep(1);
+          setColors([...COLORS]);
+          setTValue("");
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        setStep(1);
+        setColors([...COLORS]);
+        setTValue("");
+      });
   }, [id]);
 
   const sensors = useSensors(
@@ -361,7 +378,7 @@ export default function HomePage() {
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-[#EEEEEE]">
                   <span className="text-[#666666]">색상 순서</span>
-                  <span>{colors.join("")}</span>
+                  <span>{colors?.join("") || "-"}</span>
                 </div>
                 <div className="flex justify-between items-center py-2">
                   <span className="text-[#666666]">턴 수</span>
