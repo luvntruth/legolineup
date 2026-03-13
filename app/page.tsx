@@ -52,9 +52,10 @@ export default function HomePage() {
         if (d?.submission) {
           setColors(d.submission.colors);
           setTValue(d.submission.tValue);
-          if (d.submission.tValue === "") {
-            setStep(2);
-          } else {
+          // Only auto-jump to step 4 if final submission (tValue) is fully present.
+          // Do NOT auto-jump to step 2/3 just because colors are there; 
+          // let the user see the current colors and press submit explicitly.
+          if (d.submission.tValue !== "") {
             setStep(4);
           }
         }
@@ -153,7 +154,7 @@ export default function HomePage() {
             </svg>
         </div>
         <div className="flex items-center gap-1">
-          <span className="text-[#E60012] font-black text-xl italic tracking-tighter">theplaycompany</span>
+          <span className="text-[#E60012] font-black text-xl italic tracking-tighter">Lego Lineup</span>
         </div>
         <div className="w-10"></div>
       </header>
@@ -374,7 +375,7 @@ export default function HomePage() {
 
       <footer className="mt-20 text-center px-6">
         <p className="text-[10px] font-bold text-[#CCCCCC] tracking-[0.2em] uppercase">
-          © {new Date().getFullYear()} The Play Company. All rights reserved.
+          © {new Date().getFullYear()} Lego Lineup. All rights reserved.
         </p>
       </footer>
     </main>
