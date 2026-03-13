@@ -24,14 +24,24 @@ export default function HomePage() {
   const [id, setId] = useState<number | "">("");
   const [range, setRange] = useState<{ min: number; max: number }>({ min: 1, max: 100 });
   const [colors, setColors] = useState<Color[]>([...COLORS]);
-  const [tValue, setTValue] = useState<TValue | "">("");
+  const [tValue, setTValue] = useState<string>("");
+  const [tParts, setTParts] = useState<{ a: number; b: number }>({ a: 1, b: 1 });
   const [status, setStatus] = useState<string>("");
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const [isTurnEnabled, setIsTurnEnabled] = useState<boolean>(false);
 
   useEffect(() => {
-    fetch(`/api/data?t=${Date.now()}`, { cache: "no-store" }).then((res) => res.json()).then((d) => {
-      if (d?.range) setRange(d.range);
-    });
+    const checkSettings = () => {
+      fetch(`/api/data?t=${Date.now()}`, { cache: "no-store" })
+        .then((res) => res.json())
+        .then((d) => {
+          if (d?.range) setRange(d.range);
+          if (d?.settings) setIsTurnEnabled(d.settings.isTurnEntryEnabled);
+        });
+    };
+    checkSettings();
+    const pollId = setInterval(checkSettings, 3000);
+    return () => clearInterval(pollId);
   }, []);
 
   useEffect(() => {
@@ -113,17 +123,18 @@ export default function HomePage() {
     if (id === "") return;
     setStatus("제출 중...");
     try {
+      const turnString = `${tParts.a}T+${tParts.b}`;
       const res = await fetch("/api/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // Use the first T_VALUE if none is selected yet
-        body: JSON.stringify({ id, colors, tValue: tValue === "" ? T_VALUES[0] : tValue }),
+        body: JSON.stringify({ id, colors, tValue: turnString }),
       });
       const data = await res.json();
       if (!res.ok) {
         setStatus(data?.error ?? "오류 발생");
       } else {
         setStatus("");
+        setTValue(turnString);
         setStep(4);
       }
     } catch (e) {
@@ -151,8 +162,8 @@ export default function HomePage() {
         {step === 1 && (
           <div className="space-y-8 animate-fade-in">
             <section>
-              <h1 className="text-[2.5rem] font-bold text-[#1A1A1A] leading-tight mb-2">1단계: 색상 순서 입력</h1>
-              <p className="text-[#666666] font-medium">팀 ID와 의사결정한 색상 순서를 먼저 입력해주세요.</p>
+              <h1 className="text-[2.5rem] font-bold text-[#1A1A1A] leading-tight mb-2">색상 순서 입력</h1>
+              <p className="text-[#666666] font-medium">팀 ID와 의사결정한 색상 순서를 입력해주세요.</p>
             </section>
 
             <section>
@@ -222,27 +233,33 @@ export default function HomePage() {
               </svg>
             </div>
             
-            <h1 className="text-[2rem] font-bold text-[#1A1A1A] leading-tight mb-4">색상 순서가 제출되었습니다!</h1>
+            <h1 className="text-[2rem] font-bold text-[#1A1A1A] leading-tight mb-4">제출 되었습니다!</h1>
             
             <div className="p-6 bg-[#F8F9FA] rounded-2xl border border-[#EEEEEE] mb-8">
               <p className="text-[#666666] text-lg font-medium leading-relaxed">
                 현재 대기 상태입니다.<br/>
-                <strong className="text-[#E60012]">강사님의 안내를 들은 후</strong>에<br/>
-                아래 버튼을 눌러 턴 수 입력을 진행해주세요.
+                강사님의 안내가 있을 때까지 기다려 주세요.
               </p>
             </div>
 
             <button 
-              className="btn-primary"
+              className={`btn-primary ${!isTurnEnabled ? "opacity-50 grayscale cursor-not-allowed" : ""}`}
               onClick={() => {
-                if (tValue === "") setTValue(T_VALUES[0]);
-                setStep(3);
+                if (isTurnEnabled) setStep(3);
               }}
+              disabled={!isTurnEnabled}
             >
-              다음 (턴 수 입력하기)
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M5 12h14M12 5l7 7-7 7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+              {!isTurnEnabled && (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="mr-2">
+                  <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              )}
+              {isTurnEnabled ? "다음 단계 진행하기" : "강사 승인 대기 중..."}
+              {isTurnEnabled && (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M5 12h14M12 5l7 7-7 7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              )}
             </button>
           </div>
         )}
@@ -250,26 +267,47 @@ export default function HomePage() {
         {step === 3 && (
           <div className="space-y-8 animate-fade-in">
             <section>
-              <h1 className="text-[2.5rem] font-bold text-[#1A1A1A] leading-tight mb-2">2단계: 턴 수 입력</h1>
+              <h1 className="text-[2.5rem] font-bold text-[#1A1A1A] leading-tight mb-2">턴 수 입력</h1>
               <p className="text-[#666666] font-medium">강사님의 안내에 따라 결정한 턴 수를 입력해주세요.</p>
             </section>
 
             <section>
-              <h2 className="text-lg font-bold text-[#1A1A1A] mb-4">턴 수 선택</h2>
-              <div className="relative">
-                <select
-                  className="input-premium appearance-none pr-12 cursor-pointer"
-                  value={tValue}
-                  onChange={(e) => setTValue(e.target.value as TValue)}
-                >
-                  {T_VALUES.map((v) => (
-                    <option key={v} value={v}>{v}</option>
-                  ))}
-                </select>
-                <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M6 9L12 15L18 9" stroke="#666666" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
+              <h2 className="text-lg font-bold text-[#1A1A1A] mb-4">턴 수 선택 (숫자T+숫자)</h2>
+              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                <div className="relative">
+                  <select
+                    className="input-premium appearance-none pr-10 text-center text-xl font-bold"
+                    value={tParts.a}
+                    onChange={(e) => setTParts(prev => ({ ...prev, a: Number(e.target.value) }))}
+                  >
+                    {Array.from({length: 10}, (_, i) => (
+                      <option key={i+1} value={i+1}>{i+1}</option>
+                    ))}
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-30">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                </div>
+                
+                <span className="text-2xl font-black text-[#1A1A1A]">T +</span>
+
+                <div className="relative">
+                  <select
+                    className="input-premium appearance-none pr-10 text-center text-xl font-bold"
+                    value={tParts.b}
+                    onChange={(e) => setTParts(prev => ({ ...prev, b: Number(e.target.value) }))}
+                  >
+                    {Array.from({length: 10}, (_, i) => (
+                      <option key={i+1} value={i+1}>{i+1}</option>
+                    ))}
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-30">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
                 </div>
               </div>
             </section>

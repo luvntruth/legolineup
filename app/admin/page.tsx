@@ -29,7 +29,9 @@ export default function AdminPage() {
       const res = await fetch(`/api/data?t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json();
       setRange(data.range);
-      setRows(data.submissions ?? []);
+      const submissions = data.submissions ?? [];
+      (submissions as any)._settings = data.settings;
+      setRows(submissions);
       setStatus(new Date().toLocaleTimeString());
     } catch (e) {
       console.error("Failed to load data");
@@ -162,7 +164,29 @@ export default function AdminPage() {
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M19 7L18.1327 19.1425C18.0579 20.1891 17.187 21 16.1378 21H7.86224C6.81296 21 5.94208 20.1891 5.86732 19.1425L5 7M10 11V17M14 11V17M15 7V4C15 3.44772 14.5523 3 14 3H10C9.44772 3 9 3.44772 9 4V7M4 7H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
-                데이터 초기화
+                데이터 전체 초기화
+              </button>
+
+              <button 
+                onClick={async () => {
+                  const currentStatus = (rows as any)._settings?.isTurnEntryEnabled || false;
+                  await fetch("/api/settings", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ isTurnEntryEnabled: !currentStatus }),
+                  });
+                  load();
+                }}
+                className={`px-6 py-4 font-bold rounded-2xl border-2 transition-colors flex-1 flex items-center justify-center gap-2
+                  ${(rows as any)._settings?.isTurnEntryEnabled 
+                    ? "bg-green-500 border-green-500 text-white hover:bg-green-600" 
+                    : "bg-white border-[#E60012] text-[#E60012] hover:bg-red-50"
+                  }`}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M13 2L3 14h9l-1 8L21 10h-9l1-8z" fill="currentColor"/>
+                </svg>
+                {(rows as any)._settings?.isTurnEntryEnabled ? "턴 수 입력 중단하기" : "턴 수 활성화 하기"}
               </button>
             </div>
 

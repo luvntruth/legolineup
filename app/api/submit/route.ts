@@ -6,7 +6,7 @@ import { upsertSubmission, getRange } from "@/lib/db";
 const bodySchema = z.object({
   id: z.number().int(),
   colors: z.array(z.enum(COLORS as unknown as [string, ...string[]])).length(5),
-  tValue: z.union([z.enum(T_VALUES as unknown as [string, ...string[]]), z.literal("")]),
+  tValue: z.string(), // Allow free format as A T + B
 });
 
 export async function POST(req: Request) {

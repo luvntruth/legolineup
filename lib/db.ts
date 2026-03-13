@@ -14,7 +14,8 @@ export type SubmissionRow = {
 export async function upsertSubmission(id: number, colors: string[], tValue: string) {
   if (id < ID_MIN || id > ID_MAX) throw new Error("ID out of range");
   if (colors.length !== 5 || !colors.every((c: any) => COLORS.includes(c))) throw new Error("Invalid colors");
-  if (tValue !== "" && !T_VALUES.includes(tValue as any)) throw new Error("Invalid tValue");
+  // Validation for tValue is more flexible now as format changed to AT+B
+  if (tValue !== "" && !/^\d+T\+\d+$/.test(tValue)) throw new Error("Invalid tValue format");
 
   const now = new Date().toISOString();
   const docRef = doc(db, "submissions", String(id));
@@ -79,6 +80,19 @@ export async function clearAllSubmissions() {
   const snap = await getDocs(colRef);
   const promises = snap.docs.map(d => deleteDoc(d.ref));
   await Promise.all(promises);
+}
+
+export async function getSettings() {
+  const docRef = doc(db, "settings", "config");
+  const snap = await getDoc(docRef);
+  if (!snap.exists()) return { isTurnEntryEnabled: false };
+  return snap.data() as { isTurnEntryEnabled: boolean };
+}
+
+export async function updateSettings(isTurnEntryEnabled: boolean) {
+  const docRef = doc(db, "settings", "config");
+  await setDoc(docRef, { isTurnEntryEnabled }, { merge: true });
+  return { isTurnEntryEnabled };
 }
 
 export function getRange() {
