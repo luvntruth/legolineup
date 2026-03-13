@@ -163,7 +163,7 @@ export default function HomePage() {
 
         {/* T-Value */}
         <section>
-          <h2 className="text-lg font-bold text-[#1A1A1A] mb-4">T-Value 선택</h2>
+          <h2 className="text-lg font-bold text-[#1A1A1A] mb-4">턴 수 선택</h2>
           <div className="relative">
             <select
               className="input-premium appearance-none pr-12 cursor-pointer"
