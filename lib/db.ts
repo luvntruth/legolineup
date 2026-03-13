@@ -1,4 +1,4 @@
-import { doc, setDoc, getDoc, collection, getDocs, query, orderBy, deleteDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, collection, getDocs, query, orderBy, deleteDoc, runTransaction } from "firebase/firestore";
 import { db } from "./firebase";
 import { COLORS, T_VALUES } from "./constants";
 import { ID_MIN, ID_MAX } from "./config";
@@ -14,7 +14,6 @@ export type SubmissionRow = {
 export async function upsertSubmission(id: number, colors: string[], tValue: string) {
   if (id < ID_MIN || id > ID_MAX) throw new Error("ID out of range");
   if (colors.length !== 5 || !colors.every((c: any) => COLORS.includes(c))) throw new Error("Invalid colors");
-  // Validation for tValue is more flexible now as format changed to AT+B
   if (tValue !== "" && !/^\d+T\+\d+$/.test(tValue)) throw new Error("Invalid tValue format");
 
   const now = new Date().toISOString();
@@ -35,13 +34,20 @@ export async function upsertRecord(id: number, record: string) {
   const now = new Date().toISOString();
   const docRef = doc(db, "submissions", String(id));
   
-  await setDoc(docRef, {
-    id,
-    record,
-    updated_at: now
-  }, { merge: true });
-
-  return { id, record, updatedAt: now };
+  try {
+    await runTransaction(db, async (transaction) => {
+      // 트랜잭션 내에서 데이터를 쓰면 동시성 충돌을 방지할 수 있습니다.
+      transaction.set(docRef, {
+        id,
+        record,
+        updated_at: now
+      }, { merge: true });
+    });
+    return { id, record, updatedAt: now };
+  } catch (e) {
+    console.error("Transaction failed: ", e);
+    throw e;
+  }
 }
 
 export async function getSubmission(id: number) {
