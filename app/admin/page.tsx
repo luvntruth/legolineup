@@ -120,6 +120,55 @@ export default function AdminPage() {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3);
 
+  // --- Insight Logic ---
+  const parseRecordToSeconds = (record: string) => {
+    if (!record) return Infinity;
+    const match = record.match(/(\d+)'\s*(\d+)"/);
+    if (!match) return Infinity;
+    return parseInt(match[1]) * 60 + parseInt(match[2]);
+  };
+
+  const validRows = rows.filter(r => r.record && r.tValue !== "");
+  const sortedByRecord = [...validRows].sort((a, b) => parseRecordToSeconds(a.record) - parseRecordToSeconds(b.record));
+  const top20Percent = sortedByRecord.slice(0, Math.ceil(validRows.length * 0.2) || 1);
+
+  const insights = [];
+  if (validRows.length >= 3) {
+    // 1. 기록이 짧은 팀들의 특징
+    const top20Colors = new Set(top20Percent.map(r => r.colors?.join(",") || ""));
+    const top20TValues = top20Percent.map(r => parseInt(r.tValue.split("T")[0]));
+    const avgTInput = top20TValues.reduce((a, b) => a + b, 0) / top20TValues.length;
+    
+    if (top20Colors.size > 1) {
+      insights.push({
+        title: "기록 상위 팀의 전략 다양성",
+        content: `기록이 짧은 상위 ${top20Percent.length}개 팀은 서로 다른 색상 순서를 사용하고 있지만, 평균 턴 수는 ${avgTInput.toFixed(1)}T 내외로 유지되고 있습니다. 전략은 다르지만 효율적인 턴 관리가 핵심임을 알 수 있습니다.`,
+        type: "success"
+      });
+    }
+
+    // 2. 턴 수 vs 기록 편차
+    const tValueGroups: Record<string, string[]> = {};
+    validRows.forEach(r => {
+      if (!tValueGroups[r.tValue]) tValueGroups[r.tValue] = [];
+      tValueGroups[r.tValue].push(r.record);
+    });
+
+    const variedTValue = Object.entries(tValueGroups).find(([_, records]) => {
+      if (records.length < 2) return false;
+      const secs = records.map(parseRecordToSeconds);
+      return Math.max(...secs) - Math.min(...secs) > 30; // 30초 이상 차이
+    });
+
+    if (variedTValue) {
+      insights.push({
+        title: "동일 턴 수 내 기록 차이 발견",
+        content: `턴 수는 '${variedTValue[0]}'으로 동일하지만, 기록(시간)에서 상당한 차이가 나는 팀들이 존재합니다. 이는 단순히 턴 수를 줄이는 것 외에도 조립 과정의 숙련도나 커뮤니케이션 속도가 기록에 큰 영향을 미침을 시사합니다.`,
+        type: "warning"
+      });
+    }
+  }
+
   return (
     <main className="min-h-screen bg-[#F8F9FA] pb-24 font-plus-jakarta animate-fade-in">
       {/* Header */}
@@ -431,6 +480,37 @@ export default function AdminPage() {
                   );
                 }) : (
                   <p className="text-center text-[#999999] font-medium italic py-8">데이터가 부족합니다.</p>
+                )}
+              </div>
+            </section>
+
+            {/* AI Learning Insights */}
+            <section className="lg:col-span-2 card-premium overflow-hidden border-2 border-red-50">
+              <div className="px-6 py-5 border-b border-red-100 bg-red-50/30 flex items-center gap-2">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M2 17L12 22L22 17" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M2 12L12 17L22 12" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <h2 className="text-lg font-bold text-[#E60012]">데이터 학습 인사이트</h2>
+              </div>
+              <div className="p-6 bg-white grid grid-cols-1 md:grid-cols-2 gap-6">
+                {insights.length > 0 ? insights.map((insight, idx) => (
+                  <div key={idx} className={`p-5 rounded-2xl border ${
+                    insight.type === 'success' ? 'bg-green-50 border-green-100' : 'bg-blue-50 border-blue-100'
+                  }`}>
+                    <h3 className={`text-sm font-black mb-2 ${
+                      insight.type === 'success' ? 'text-green-700' : 'text-blue-700'
+                    }`}>{insight.title}</h3>
+                    <p className="text-sm text-[#444444] leading-relaxed font-medium">
+                      {insight.content}
+                    </p>
+                  </div>
+                )) : (
+                  <div className="md:col-span-2 py-10 text-center">
+                    <p className="text-[#999999] font-medium italic">데이터가 쌓이면 실시간 분석 인사이트가 여기에 표시됩니다.</p>
+                    <p className="text-[10px] text-[#CCCCCC] mt-2 uppercase tracking-widest">실시간 분석 엔진 가동 중</p>
+                  </div>
                 )}
               </div>
             </section>
