@@ -5,8 +5,9 @@ import { COLORS } from "@/lib/constants";
 
 interface Submission {
   id: number;
-  colors: string[];
+  colors?: string[];
   tValue: string;
+  record: string;
   updatedAt: string;
 }
 
@@ -16,6 +17,12 @@ export default function AdminPage() {
   const [status, setStatus] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("dashboard");
   const [isFullView, setIsFullView] = useState<boolean>(false);
+  
+  // Recorder State
+  const [recTeamId, setRecTeamId] = useState<number | "">("");
+  const [recMin, setRecMin] = useState<number>(0);
+  const [recSec, setRecSec] = useState<number>(0);
+  const [recStatus, setRecStatus] = useState<string>("");
 
   const load = async () => {
     try {
@@ -68,12 +75,40 @@ export default function AdminPage() {
   const tValueFreqs: Record<string, number> = {};
   
   rows.forEach(r => {
-    const colorStr = r.colors.join(",");
-    colorFreqs[colorStr] = (colorFreqs[colorStr] || 0) + 1;
+    if (r.colors) {
+      const colorStr = r.colors.join(",");
+      colorFreqs[colorStr] = (colorFreqs[colorStr] || 0) + 1;
+    }
     if (r.tValue !== "") {
       tValueFreqs[r.tValue] = (tValueFreqs[r.tValue] || 0) + 1;
     }
   });
+
+  const handleRecordSubmit = async () => {
+    if (recTeamId === "") {
+        setRecStatus("팀 ID를 입력하세요.");
+        return;
+    }
+    const recordStr = `${recMin}' ${String(recSec).padStart(2, '0')}"`;
+    setRecStatus("전송 중...");
+    try {
+      const res = await fetch("/api/record", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: recTeamId, record: recordStr }),
+      });
+      if (res.ok) {
+        setRecStatus("기록 저장 완료!");
+        load();
+        setTimeout(() => setRecStatus(""), 3000);
+      } else {
+        const d = await res.json();
+        setRecStatus(d.error || "저장 실패");
+      }
+    } catch (e) {
+      setRecStatus("네트워크 오류");
+    }
+  };
 
   const topColors = Object.entries(colorFreqs)
     .sort((a, b) => b[1] - a[1])
@@ -184,27 +219,37 @@ export default function AdminPage() {
                   <thead>
                     <tr className="bg-[#F8F9FA]">
                       <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest">팀 ID</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest text-center">기록</th>
                       <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest text-center">색상 순서</th>
                       <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest text-right">턴 수</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#EEEEEE]">
                     {rows.length > 0 ? (
-                      rows.slice().reverse().slice(0, 5).map((r) => (
+                      rows.slice().sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, 10).map((r) => (
                         <tr key={r.id} className="hover:bg-[#F8F9FA] transition-colors group">
                           <td className="px-6 py-5 font-bold text-[#1A1A1A]">#{r.id}</td>
+                          <td className="px-6 py-5 text-center font-black text-[#E60012] text-lg tabular-nums">
+                            {r.record || "-"}
+                          </td>
                           <td className="px-6 py-5">
                             <div className="flex items-center justify-center gap-3">
-                              <div className="flex items-center gap-1.5">
-                                {r.colors?.map((c, i) => (
-                                  <div 
-                                    key={i} 
-                                    className="w-4 h-4 rounded-full border border-black/5 shadow-sm"
-                                    style={{ backgroundColor: getColorHex(c) }}
-                                  />
-                                ))}
-                              </div>
-                              <span className="text-sm font-bold text-[#666666] tracking-widest">{r.colors?.join("")}</span>
+                              {r.colors ? (
+                                <>
+                                  <div className="flex items-center gap-1.5">
+                                    {r.colors.map((c, i) => (
+                                      <div 
+                                        key={i} 
+                                        className="w-4 h-4 rounded-full border border-black/5 shadow-sm"
+                                        style={{ backgroundColor: getColorHex(c) }}
+                                      />
+                                    ))}
+                                  </div>
+                                  <span className="text-sm font-bold text-[#666666] tracking-widest">{r.colors.join("")}</span>
+                                </>
+                              ) : (
+                                <span className="text-xs font-bold text-[#CCCCCC] italic">제출 대기</span>
+                              )}
                             </div>
                           </td>
                           <td className="px-6 py-5 text-right">
@@ -306,6 +351,87 @@ export default function AdminPage() {
             </section>
           </div>
         )}
+
+        {/* Recorder View */}
+        {activeTab === "recorder" && (
+          <div className="space-y-6 animate-fade-in max-w-md mx-auto">
+            <section className="card-premium p-8 space-y-8">
+              <div className="text-center">
+                <h2 className="text-2xl font-bold text-[#1A1A1A] mb-2">기록 측정 입력기</h2>
+                <p className="text-[#666666] font-medium text-sm">팀별 활동 시간을 입력해 주세요.</p>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-black text-[#999999] uppercase tracking-widest mb-2">팀 ID</label>
+                  <input
+                    type="number"
+                    className="input-premium text-center text-2xl font-black"
+                    placeholder="ID"
+                    value={recTeamId}
+                    onChange={(e) => setRecTeamId(e.target.value === "" ? "" : Number(e.target.value))}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-black text-[#999999] uppercase tracking-widest mb-2">분 (Min)</label>
+                    <select 
+                      className="input-premium text-center text-xl font-bold appearance-none bg-white"
+                      value={recMin}
+                      onChange={(e) => setRecMin(Number(e.target.value))}
+                    >
+                      {Array.from({length: 60}, (_, i) => (
+                        <option key={i} value={i}>{i}분</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-black text-[#999999] uppercase tracking-widest mb-2">초 (Sec)</label>
+                    <select 
+                      className="input-premium text-center text-xl font-bold appearance-none bg-white"
+                      value={recSec}
+                      onChange={(e) => setRecSec(Number(e.target.value))}
+                    >
+                      {Array.from({length: 60}, (_, i) => (
+                        <option key={i} value={i}>{String(i).padStart(2, '0')}초</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="pt-4">
+                  <button 
+                    onClick={handleRecordSubmit}
+                    disabled={recStatus === "전송 중..."}
+                    className="btn-primary w-full text-lg h-16 rounded-2xl"
+                  >
+                    {recStatus === "전송 중..." ? "저장 중..." : "기록 제출하기"}
+                  </button>
+                  {recStatus && recStatus !== "전송 중..." && (
+                    <p className={`mt-4 text-center font-bold text-sm ${recStatus.includes("완료") ? "text-green-500" : "text-[#E60012]"}`}>
+                      {recStatus}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            <section className="card-premium overflow-hidden">
+                <div className="px-6 py-4 border-b border-[#EEEEEE] bg-white">
+                    <h3 className="text-sm font-bold text-[#1A1A1A]">최근 입력 기록</h3>
+                </div>
+                <div className="divide-y divide-[#EEEEEE]">
+                    {rows.slice().sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, 5).map(r => (
+                        <div key={r.id} className="px-6 py-4 flex items-center justify-between bg-white text-sm">
+                            <span className="font-bold">#{r.id}팀</span>
+                            <span className="font-black text-[#E60012]">{r.record || "-"}</span>
+                        </div>
+                    ))}
+                </div>
+            </section>
+          </div>
+        )}
       </div>
 
       {/* Full View Modal */}
@@ -328,27 +454,37 @@ export default function AdminPage() {
               <thead>
                 <tr className="bg-[#F8F9FA] sticky top-0 z-10">
                   <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest leading-none">팀 ID</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest text-center leading-none">기록</th>
                   <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest text-center leading-none">색상 순서</th>
                   <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest text-right leading-none">턴 수</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#EEEEEE]">
                 {rows.length > 0 ? (
-                  rows.slice().reverse().map((r) => (
+                  rows.slice().sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).map((r) => (
                     <tr key={r.id} className="hover:bg-[#F8F9FA] transition-colors">
                       <td className="px-6 py-5 font-bold text-[#1A1A1A]">#{r.id}</td>
+                      <td className="px-6 py-5 text-center font-black text-[#E60012] tabular-nums">
+                        {r.record || "-"}
+                      </td>
                       <td className="px-6 py-5">
                         <div className="flex items-center justify-center gap-3">
-                          <div className="flex items-center gap-1.5">
-                            {r.colors?.map((c, i) => (
-                              <div 
-                                key={i} 
-                                className="w-4 h-4 rounded-full border border-black/5 shadow-sm"
-                                style={{ backgroundColor: getColorHex(c) }}
-                              />
-                            ))}
-                          </div>
-                          <span className="text-sm font-bold text-[#666666] tracking-widest">{r.colors?.join("")}</span>
+                          {r.colors ? (
+                            <>
+                              <div className="flex items-center gap-1.5">
+                                {r.colors.map((c, i) => (
+                                  <div 
+                                    key={i} 
+                                    className="w-4 h-4 rounded-full border border-black/5 shadow-sm"
+                                    style={{ backgroundColor: getColorHex(c) }}
+                                  />
+                                ))}
+                              </div>
+                              <span className="text-sm font-bold text-[#666666] tracking-widest">{r.colors.join("")}</span>
+                            </>
+                          ) : (
+                            <span className="text-xs font-bold text-[#CCCCCC] italic">제출 대기</span>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-5 text-right">
@@ -378,24 +514,38 @@ export default function AdminPage() {
       )}
 
       {/* Bottom Tabs Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#EEEEEE] px-6 py-3 flex items-center justify-between z-40 max-w-4xl mx-auto shadow-[0_-4px_16px_rgba(0,0,0,0.04)] rounded-t-[2rem]">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#EEEEEE] px-4 py-3 flex items-center justify-between z-40 max-w-4xl mx-auto shadow-[0_-4px_16px_rgba(0,0,0,0.04)] rounded-t-[2rem]">
         <button 
           onClick={() => setActiveTab("dashboard")}
           className={`flex flex-col items-center gap-1 flex-1 transition-all ${activeTab === "dashboard" ? "text-[#E60012]" : "text-[#CCCCCC]"}`}
         >
           <div className={`p-2 rounded-xl ${activeTab === "dashboard" ? "bg-red-50" : ""}`}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h6v6h-6v-6z" fill="currentColor"/>
             </svg>
           </div>
           <span className="text-[10px] font-bold">제출 현황</span>
         </button>
+
+        <button 
+          onClick={() => setActiveTab("recorder")}
+          className={`flex flex-col items-center gap-1 flex-1 transition-all ${activeTab === "recorder" ? "text-[#E60012]" : "text-[#CCCCCC]"}`}
+        >
+          <div className={`p-2 rounded-xl ${activeTab === "recorder" ? "bg-red-50" : ""}`}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.5"/>
+                <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+            </svg>
+          </div>
+          <span className="text-[10px] font-bold">기록 입력</span>
+        </button>
+
         <button 
           onClick={() => setActiveTab("stats")}
           className={`flex flex-col items-center gap-1 flex-1 transition-all ${activeTab === "stats" ? "text-[#E60012]" : "text-[#CCCCCC]"}`}
         >
           <div className={`p-2 rounded-xl ${activeTab === "stats" ? "bg-red-50" : ""}`}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M18 20V10M12 20V4M6 20v-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>

@@ -5,8 +5,9 @@ import { ID_MIN, ID_MAX } from "./config";
 
 export type SubmissionRow = {
   id: number;
-  colors: string;
-  t_value: string;
+  colors?: string;
+  t_value?: string;
+  record?: string;
   updated_at: string;
 };
 
@@ -23,9 +24,23 @@ export async function upsertSubmission(id: number, colors: string[], tValue: str
     colors: JSON.stringify(colors),
     t_value: tValue,
     updated_at: now
-  });
+  }, { merge: true });
 
   return { id, colors, tValue, updatedAt: now };
+}
+
+export async function upsertRecord(id: number, record: string) {
+  if (id < ID_MIN || id > ID_MAX) throw new Error("ID out of range");
+  const now = new Date().toISOString();
+  const docRef = doc(db, "submissions", String(id));
+  
+  await setDoc(docRef, {
+    id,
+    record,
+    updated_at: now
+  }, { merge: true });
+
+  return { id, record, updatedAt: now };
 }
 
 export async function getSubmission(id: number) {
@@ -35,8 +50,9 @@ export async function getSubmission(id: number) {
   const data = snap.data();
   return { 
     id: data.id, 
-    colors: JSON.parse(data.colors), 
-    tValue: data.t_value, 
+    colors: data.colors ? JSON.parse(data.colors) : null, 
+    tValue: data.t_value ?? "", 
+    record: data.record ?? "",
     updatedAt: data.updated_at 
   };
 }
@@ -51,8 +67,9 @@ export async function getAllSubmissions() {
   });
   return rows.map(r => ({ 
     id: r.id, 
-    colors: JSON.parse(r.colors), 
-    tValue: r.t_value, 
+    colors: r.colors ? JSON.parse(r.colors) : null, 
+    tValue: r.t_value ?? "", 
+    record: r.record ?? "",
     updatedAt: r.updated_at 
   }));
 }
