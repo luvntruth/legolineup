@@ -156,6 +156,46 @@ export default function AdminPage() {
     }
   }
 
+  // === Visualization Data ===
+  const avgSeconds = validRows.length > 0
+    ? validRows.reduce((sum, r) => sum + parseRecordToSeconds(r.record), 0) / validRows.length
+    : 0;
+  const formatSeconds = (s: number) => {
+    if (!isFinite(s)) return "-";
+    const m = Math.floor(s / 60);
+    const sec = Math.round(s % 60);
+    return `${m}' ${String(sec).padStart(2, '0')}"`;
+  };
+  const maxRecordSeconds = sortedByRecord.length > 0
+    ? parseRecordToSeconds(sortedByRecord[sortedByRecord.length - 1].record)
+    : 1;
+
+  // Full team grouping by tValue for insight 2 visualization
+  const tValueTeamGroups: Record<string, Submission[]> = {};
+  validRows.forEach(r => {
+    if (!tValueTeamGroups[r.tValue]) tValueTeamGroups[r.tValue] = [];
+    tValueTeamGroups[r.tValue].push(r);
+  });
+  const variedTValueTeams = Object.entries(tValueTeamGroups).find(([_, teams]) => {
+    if (teams.length < 2) return false;
+    const secs = teams.map(t => parseRecordToSeconds(t.record));
+    return Math.max(...secs) - Math.min(...secs) > 30;
+  });
+
+  // T-value base distribution (group by turn number: 2T, 3T, 4T, 5T)
+  const tBaseDistribution: Record<string, { count: number; avgSec: number; teams: Submission[] }> = {};
+  validRows.forEach(r => {
+    const tBase = r.tValue.split("T")[0] + "T";
+    if (!tBaseDistribution[tBase]) tBaseDistribution[tBase] = { count: 0, avgSec: 0, teams: [] };
+    tBaseDistribution[tBase].count++;
+    tBaseDistribution[tBase].teams.push(r);
+  });
+  Object.values(tBaseDistribution).forEach(v => {
+    v.avgSec = v.teams.reduce((s, r) => s + parseRecordToSeconds(r.record), 0) / v.count;
+  });
+  const tBaseSorted = Object.entries(tBaseDistribution).sort(([a], [b]) => a.localeCompare(b));
+  const maxTBaseAvg = tBaseSorted.length > 0 ? Math.max(...tBaseSorted.map(([_, v]) => v.avgSec)) : 1;
+
   return (
     <main className="min-h-screen bg-[#F8F9FA] pb-24 font-plus-jakarta animate-fade-in">
       {/* Header */}
@@ -400,37 +440,248 @@ export default function AdminPage() {
 
         {/* Stats View */}
         {activeTab === "stats" && (
-          <div className="animate-fade-in max-w-4xl mx-auto">
-            {/* AI Learning Insights (Now Mainized) */}
-            <section className="card-premium overflow-hidden border-2 border-red-50">
-              <div className="px-6 py-5 border-b border-red-100 bg-red-50/30 flex items-center gap-2">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M2 17L12 22L22 17" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M2 12L12 17L22 12" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                <h2 className="text-xl font-bold text-[#E60012]">데이터 학습 인사이트</h2>
-              </div>
-              <div className="p-8 bg-white space-y-8">
-                {insights.length > 0 ? insights.map((insight, idx) => (
-                  <div key={idx} className={`p-6 rounded-2xl border-2 transition-all hover:shadow-md ${
-                    insight.type === 'success' ? 'bg-green-50/50 border-green-100' : 'bg-blue-50/50 border-blue-100'
-                  }`}>
-                    <div className="flex items-start gap-4">
-                      <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${
-                        insight.type === 'success' ? 'bg-green-500' : 'bg-blue-500'
-                      }`} />
-                      <div>
-                        <h3 className={`text-lg font-black mb-2 ${
-                          insight.type === 'success' ? 'text-green-700' : 'text-blue-700'
-                        }`}>{insight.title}</h3>
-                        <p className="text-base text-[#444444] leading-relaxed font-medium">
-                          {insight.content}
-                        </p>
+          <div className="animate-fade-in max-w-4xl mx-auto space-y-8">
+
+            {validRows.length >= 3 ? (
+              <>
+                {/* Summary Stats */}
+                <div className="grid grid-cols-3 gap-3 md:gap-4">
+                  <div className="card-premium p-4 md:p-5 text-center">
+                    <p className="text-[10px] md:text-xs font-black text-[#999999] uppercase tracking-widest mb-1">참가 팀</p>
+                    <p className="text-2xl md:text-3xl font-black text-[#1A1A1A]">{validRows.length}</p>
+                  </div>
+                  <div className="card-premium p-4 md:p-5 text-center">
+                    <p className="text-[10px] md:text-xs font-black text-[#999999] uppercase tracking-widest mb-1">평균 기록</p>
+                    <p className="text-2xl md:text-3xl font-black text-[#E60012] tabular-nums">{formatSeconds(avgSeconds)}</p>
+                  </div>
+                  <div className="card-premium p-4 md:p-5 text-center">
+                    <p className="text-[10px] md:text-xs font-black text-[#999999] uppercase tracking-widest mb-1">최고 기록</p>
+                    <p className="text-2xl md:text-3xl font-black text-green-600 tabular-nums">{sortedByRecord[0]?.record || "-"}</p>
+                  </div>
+                </div>
+
+                {/* Team Ranking Bar Chart */}
+                <section className="card-premium overflow-hidden">
+                  <div className="px-6 py-5 border-b border-[#EEEEEE] bg-white">
+                    <h2 className="text-lg md:text-xl font-bold text-[#1A1A1A]">🏆 팀 기록 순위</h2>
+                    <p className="text-xs text-[#999999] mt-1">기록이 빠른 순서 · <span className="text-green-600 font-bold">상위 {top20Percent.length}팀 (20%)</span> 하이라이트</p>
+                  </div>
+                  <div className="p-3 md:p-6 space-y-1.5 md:space-y-2">
+                    {sortedByRecord.map((r, idx) => {
+                      const seconds = parseRecordToSeconds(r.record);
+                      const percentage = maxRecordSeconds > 0 ? (seconds / maxRecordSeconds) * 100 : 0;
+                      const isTop20 = idx < top20Percent.length;
+                      const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : null;
+                      return (
+                        <div key={r.id} className={`flex items-center gap-2 md:gap-3 p-2 md:p-3 rounded-xl transition-all ${
+                          isTop20 ? 'bg-green-50/80 border border-green-200' : 'bg-[#FAFAFA] border border-transparent'
+                        }`}>
+                          <span className={`w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center text-[10px] md:text-xs font-black shrink-0 ${
+                            isTop20 ? 'bg-green-500 text-white shadow-sm' : 'bg-[#EEEEEE] text-[#999999]'
+                          }`}>
+                            {medal || (idx + 1)}
+                          </span>
+                          <span className="font-bold text-[#1A1A1A] w-10 md:w-14 text-xs md:text-sm shrink-0">#{r.id}</span>
+                          <div className="hidden md:flex items-center gap-1 shrink-0">
+                            {r.colors?.map((c, i) => (
+                              <div key={i} className="w-3 h-3 rounded-full border border-black/5 shadow-sm" style={{ backgroundColor: getColorHex(c) }} />
+                            ))}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="h-5 md:h-6 rounded-full overflow-hidden bg-[#EEEEEE]/60">
+                              <div
+                                className={`h-full rounded-full transition-all duration-700 ${
+                                  isTop20
+                                    ? 'bg-gradient-to-r from-green-400 to-emerald-500'
+                                    : 'bg-gradient-to-r from-gray-300 to-gray-400'
+                                }`}
+                                style={{ width: `${Math.max(percentage, 8)}%` }}
+                              />
+                            </div>
+                          </div>
+                          <span className="font-black text-[#E60012] tabular-nums text-xs md:text-sm w-14 md:w-16 text-right shrink-0">{r.record}</span>
+                          <span className="text-[9px] md:text-xs font-bold text-[#999] bg-[#F0F0F0] px-1.5 md:px-2 py-0.5 rounded-full shrink-0">{r.tValue}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+
+                {/* Enhanced AI Insights with Team Data */}
+                <section className="card-premium overflow-hidden border-2 border-red-50">
+                  <div className="px-6 py-5 border-b border-red-100 bg-red-50/30 flex items-center gap-2">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M2 17L12 22L22 17" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M2 12L12 17L22 12" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <h2 className="text-xl font-bold text-[#E60012]">데이터 학습 인사이트</h2>
+                  </div>
+                  <div className="p-5 md:p-8 bg-white space-y-8">
+                    {/* Insight 1: 전략 다양성 */}
+                    {insights.filter(i => i.type === 'success').map((insight, idx) => (
+                      <div key={`s-${idx}`} className="space-y-4">
+                        <div className="p-5 rounded-2xl bg-green-50/50 border-2 border-green-100 hover:shadow-md transition-all">
+                          <div className="flex items-start gap-3">
+                            <div className="mt-1.5 w-2.5 h-2.5 rounded-full shrink-0 bg-green-500" />
+                            <div>
+                              <h3 className="text-base md:text-lg font-black text-green-700 mb-2">{insight.title}</h3>
+                              <p className="text-sm md:text-base text-[#444444] leading-relaxed font-medium">{insight.content}</p>
+                            </div>
+                          </div>
+                        </div>
+                        {/* Top 20% team data */}
+                        <div className="bg-green-50/30 rounded-2xl p-4 md:p-5 border border-green-100">
+                          <h4 className="text-xs font-black text-green-700 mb-3 uppercase tracking-wider flex items-center gap-1.5">
+                            <span>📊</span> 상위 {top20Percent.length}팀 실제 데이터
+                          </h4>
+                          <div className="space-y-2">
+                            {top20Percent.map((r, i) => (
+                              <div key={r.id} className="flex items-center gap-2 md:gap-3 p-2.5 md:p-3 bg-white rounded-xl border border-green-100/50 shadow-sm">
+                                <span className="text-base md:text-lg shrink-0">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i+1}`}</span>
+                                <span className="font-bold text-[#1A1A1A] text-sm">팀 #{r.id}</span>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  {r.colors?.map((c, j) => (
+                                    <div key={j} className="w-3.5 h-3.5 md:w-4 md:h-4 rounded-full border border-black/10 shadow-sm" style={{ backgroundColor: getColorHex(c) }} />
+                                  ))}
+                                </div>
+                                <span className="hidden md:inline text-sm font-bold text-[#666] tracking-wider">{r.colors?.join("")}</span>
+                                <div className="ml-auto flex items-center gap-2 md:gap-3">
+                                  <span className="text-[10px] md:text-xs font-bold text-[#999] bg-[#F0F0F0] px-2 py-0.5 rounded-full">{r.tValue}</span>
+                                  <span className="font-black text-[#E60012] tabular-nums text-sm">{r.record}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Insight 2: 동일 턴 수 내 기록 차이 */}
+                    {insights.filter(i => i.type === 'warning').map((insight, idx) => (
+                      <div key={`w-${idx}`} className="space-y-4">
+                        <div className="p-5 rounded-2xl bg-amber-50/50 border-2 border-amber-200 hover:shadow-md transition-all">
+                          <div className="flex items-start gap-3">
+                            <div className="mt-1.5 w-2.5 h-2.5 rounded-full shrink-0 bg-amber-500" />
+                            <div>
+                              <h3 className="text-base md:text-lg font-black text-amber-700 mb-2">{insight.title}</h3>
+                              <p className="text-sm md:text-base text-[#444444] leading-relaxed font-medium">{insight.content}</p>
+                            </div>
+                          </div>
+                        </div>
+                        {/* Teams with same T-value, different records */}
+                        {variedTValueTeams && (
+                          <div className="bg-amber-50/30 rounded-2xl p-4 md:p-5 border border-amber-200">
+                            <h4 className="text-xs font-black text-amber-700 mb-3 uppercase tracking-wider flex items-center gap-1.5">
+                              <span>⚡</span> 턴 수 &apos;{variedTValueTeams[0]}&apos; 팀 비교
+                            </h4>
+                            <div className="space-y-2">
+                              {variedTValueTeams[1]
+                                .sort((a, b) => parseRecordToSeconds(a.record) - parseRecordToSeconds(b.record))
+                                .map((r) => {
+                                  const seconds = parseRecordToSeconds(r.record);
+                                  const localMax = Math.max(...variedTValueTeams[1].map(t => parseRecordToSeconds(t.record)));
+                                  const pct = localMax > 0 ? (seconds / localMax) * 100 : 0;
+                                  return (
+                                    <div key={r.id} className="flex items-center gap-2 md:gap-3 p-2.5 md:p-3 bg-white rounded-xl border border-amber-100/50 shadow-sm">
+                                      <span className="font-bold text-[#1A1A1A] w-12 md:w-14 text-sm shrink-0">#{r.id}</span>
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        {r.colors?.map((c, j) => (
+                                          <div key={j} className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full border border-black/5" style={{ backgroundColor: getColorHex(c) }} />
+                                        ))}
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <div className="h-5 rounded-full overflow-hidden bg-amber-100/50">
+                                          <div
+                                            className="h-full rounded-full bg-gradient-to-r from-amber-300 to-amber-500 transition-all duration-700"
+                                            style={{ width: `${Math.max(pct, 10)}%` }}
+                                          />
+                                        </div>
+                                      </div>
+                                      <span className="font-black text-[#E60012] tabular-nums text-sm w-14 md:w-16 text-right shrink-0">{r.record}</span>
+                                    </div>
+                                  );
+                                })}
+                              <div className="mt-3 p-3 bg-amber-100/40 rounded-xl text-center">
+                                <span className="text-sm font-bold text-amber-700">
+                                  ⏱ 최대 차이: {(() => {
+                                    const secs = variedTValueTeams[1].map(t => parseRecordToSeconds(t.record));
+                                    const diff = Math.max(...secs) - Math.min(...secs);
+                                    return formatSeconds(diff);
+                                  })()}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                    {insights.length === 0 && (
+                      <div className="py-16 text-center space-y-4">
+                        <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3" stroke="#E60012" strokeWidth="2" strokeLinecap="round"/>
+                           </svg>
+                        </div>
+                        <p className="text-[#999999] text-lg font-bold italic">아직 분석할 패턴이 부족합니다.</p>
+                        <p className="text-xs text-[#CCCCCC] uppercase tracking-[0.2em] font-black">데이터가 더 쌓이면 인사이트가 표시됩니다</p>
+                      </div>
+                    )}
+                  </div>
+                </section>
+
+                {/* Turn Count Distribution Chart */}
+                {tBaseSorted.length > 0 && (
+                  <section className="card-premium overflow-hidden">
+                    <div className="px-6 py-5 border-b border-[#EEEEEE] bg-white">
+                      <h2 className="text-lg md:text-xl font-bold text-[#1A1A1A]">📊 턴 수별 평균 기록</h2>
+                      <p className="text-xs text-[#999999] mt-1">턴 수 그룹별 평균 소요 시간 비교</p>
+                    </div>
+                    <div className="p-6 md:p-8">
+                      <div className="flex items-end gap-3 md:gap-6 justify-center" style={{ height: '220px' }}>
+                        {tBaseSorted.map(([tBase, data]) => {
+                          const heightPct = maxTBaseAvg > 0 ? (data.avgSec / maxTBaseAvg) * 100 : 0;
+                          const tNum = parseInt(tBase);
+                          const barColors = [
+                            'from-emerald-400 to-emerald-500',
+                            'from-blue-400 to-blue-500',
+                            'from-purple-400 to-purple-500',
+                            'from-rose-400 to-rose-500',
+                          ];
+                          const barColor = barColors[(tNum - 2) % barColors.length] || 'from-gray-400 to-gray-500';
+                          return (
+                            <div key={tBase} className="flex flex-col items-center gap-2 flex-1 max-w-20 md:max-w-28" style={{ height: '100%' }}>
+                              <span className="text-[10px] md:text-xs font-bold text-[#666] tabular-nums whitespace-nowrap">{formatSeconds(data.avgSec)}</span>
+                              <div className="w-full flex-1 flex items-end">
+                                <div
+                                  className={`w-full rounded-t-xl bg-gradient-to-t ${barColor} transition-all duration-700 shadow-sm`}
+                                  style={{ height: `${Math.max(heightPct, 5)}%` }}
+                                />
+                              </div>
+                              <div className="text-center pt-2 border-t-2 border-[#EEEEEE] w-full">
+                                <span className="text-sm md:text-base font-black text-[#1A1A1A]">{tBase}</span>
+                                <p className="text-[10px] text-[#999] font-bold">{data.count}팀</p>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
-                  </div>
-                )) : (
+                  </section>
+                )}
+              </>
+            ) : (
+              <section className="card-premium overflow-hidden border-2 border-red-50">
+                <div className="px-6 py-5 border-b border-red-100 bg-red-50/30 flex items-center gap-2">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M2 17L12 22L22 17" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M2 12L12 17L22 12" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <h2 className="text-xl font-bold text-[#E60012]">데이터 학습 인사이트</h2>
+                </div>
+                <div className="p-8 bg-white">
                   <div className="py-20 text-center space-y-4">
                     <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -440,9 +691,9 @@ export default function AdminPage() {
                     <p className="text-[#999999] text-lg font-bold italic">데이터가 쌓이면 실시간 분석 인사이트가 여기에 표시됩니다.</p>
                     <p className="text-xs text-[#CCCCCC] uppercase tracking-[0.2em] font-black">Real-time Analysis Engine Initializing...</p>
                   </div>
-                )}
-              </div>
-            </section>
+                </div>
+              </section>
+            )}
           </div>
         )}
 
