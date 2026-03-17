@@ -8,6 +8,7 @@ interface Submission {
   colors?: string[];
   tValue: string;
   record: string;
+  records?: string[];
   updatedAt: string;
 }
 
@@ -17,7 +18,8 @@ export default function AdminPage() {
   const [status, setStatus] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("dashboard");
   const [isFullView, setIsFullView] = useState<boolean>(false);
-  
+  const [sortOption, setSortOption] = useState<string>("latest"); // new state for sorting
+
   // Recorder State
   const [recTeamId, setRecTeamId] = useState<number | "">("");
   const [recMin, setRecMin] = useState<number>(0);
@@ -85,8 +87,8 @@ export default function AdminPage() {
 
   const handleRecordSubmit = async () => {
     if (recTeamId === "") {
-        setRecStatus("팀 ID를 입력하세요.");
-        return;
+      setRecStatus("팀 ID를 입력하세요.");
+      return;
     }
     const recordStr = `${recMin}' ${String(recSec).padStart(2, '0')}"`;
     setRecStatus("전송 중...");
@@ -125,7 +127,7 @@ export default function AdminPage() {
     const top20Colors = new Set(top20Percent.map(r => r.colors?.join(",") || ""));
     const top20TValues = top20Percent.map(r => parseInt(r.tValue.split("T")[0]));
     const avgTInput = top20TValues.reduce((a, b) => a + b, 0) / top20TValues.length;
-    
+
     if (top20Colors.size > 1) {
       insights.push({
         title: "기록 상위 팀의 전략 다양성",
@@ -161,7 +163,7 @@ export default function AdminPage() {
     ? validRows.reduce((sum, r) => sum + parseRecordToSeconds(r.record), 0) / validRows.length
     : 0;
   const formatSeconds = (s: number) => {
-    if (!isFinite(s)) return "-";
+    if (!isFinite(s) || s === Infinity) return "-";
     const m = Math.floor(s / 60);
     const sec = Math.round(s % 60);
     return `${m}' ${String(sec).padStart(2, '0')}"`;
@@ -202,12 +204,12 @@ export default function AdminPage() {
       <header className="px-6 py-6 border-b border-[#EEEEEE] bg-white flex items-center justify-between sticky top-0 z-30">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-[#E60012] flex items-center justify-center">
-             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="4" y="4" width="6" height="6" rx="1" fill="white"/>
-                <rect x="4" y="14" width="6" height="6" rx="1" fill="white" fillOpacity="0.4"/>
-                <rect x="14" y="4" width="6" height="6" rx="1" fill="white" fillOpacity="0.4"/>
-                <rect x="14" y="14" width="6" height="6" rx="1" fill="white" fillOpacity="0.4"/>
-             </svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="4" y="4" width="6" height="6" rx="1" fill="white" />
+              <rect x="4" y="14" width="6" height="6" rx="1" fill="white" fillOpacity="0.4" />
+              <rect x="14" y="4" width="6" height="6" rx="1" fill="white" fillOpacity="0.4" />
+              <rect x="14" y="14" width="6" height="6" rx="1" fill="white" fillOpacity="0.4" />
+            </svg>
           </div>
           <h1 className="text-2xl font-bold text-[#1A1A1A]">제출 현황</h1>
         </div>
@@ -222,28 +224,28 @@ export default function AdminPage() {
           <>
             {/* Actions */}
             <div className="flex flex-col md:flex-row gap-4">
-              <button 
+              <button
                 onClick={load}
                 className="btn-primary flex-1 py-5"
               >
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="animate-spin-slow">
-                  <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C14.8273 3 17.3752 4.30561 19 6.33333M21 3V7H17" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C14.8273 3 17.3752 4.30561 19 6.33333M21 3V7H17" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 <span className="text-xl">새로고침</span>
               </button>
-              
-              <button 
+
+              <button
                 onClick={handleReset}
                 className="px-6 py-5 bg-white text-[#E60012] font-bold rounded-[2rem] border-2 border-[#E60012] flex items-center justify-center gap-2 hover:bg-red-50 transition-colors flex-1 shadow-[0_8px_16px_rgba(230,0,18,0.05)]"
                 title="데이터 초기화"
               >
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M19 7L18.1327 19.1425C18.0579 20.1891 17.187 21 16.1378 21H7.86224C6.81296 21 5.94208 21 5.86732 19.1425L5 7M10 11V17M14 11V17M15 7V4C15 3.44772 14.5523 3 14 3H10C9.44772 3 9 3.44772 9 4V7M4 7H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M19 7L18.1327 19.1425C18.0579 20.1891 17.187 21 16.1378 21H7.86224C6.81296 21 5.94208 21 5.86732 19.1425L5 7M10 11V17M14 11V17M15 7V4C15 3.44772 14.5523 3 14 3H10C9.44772 3 9 3.44772 9 4V7M4 7H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 <span className="text-xl">데이터 초기화</span>
               </button>
 
-              <button 
+              <button
                 onClick={async () => {
                   const currentStatus = (rows as any)._settings?.isTurnEntryEnabled || false;
                   await fetch("/api/settings", {
@@ -254,13 +256,13 @@ export default function AdminPage() {
                   load();
                 }}
                 className={`px-6 py-5 font-bold rounded-[2rem] border-2 transition-colors flex-1 flex items-center justify-center gap-2 shadow-[0_8px_16px_rgba(0,0,0,0.05)]
-                  ${(rows as any)._settings?.isTurnEntryEnabled 
-                    ? "bg-green-500 border-green-500 text-white hover:bg-green-600" 
+                  ${(rows as any)._settings?.isTurnEntryEnabled
+                    ? "bg-green-500 border-green-500 text-white hover:bg-green-600"
                     : "bg-white border-[#E60012] text-[#E60012] hover:bg-red-50"
                   }`}
               >
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M13 2L3 14h9l-1 8L21 10h-9l1-8z" fill="currentColor"/>
+                  <path d="M13 2L3 14h9l-1 8L21 10h-9l1-8z" fill="currentColor" />
                 </svg>
                 <span className="text-xl">{(rows as any)._settings?.isTurnEntryEnabled ? "턴 수 중단" : "턴 수 활성화"}</span>
               </button>
@@ -275,10 +277,10 @@ export default function AdminPage() {
                 </div>
                 <div className="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M17 21V19C17 17.9391 16.5786 16.9217 15.8284 16.1716C15.0783 15.4214 14.0609 15 13 15H5C3.93913 15 2.92172 15.4214 2.17157 16.1716C1.42143 16.9217 1 17.9391 1 19V21" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M9 11C11.2091 11 13 9.20914 13 7C13 4.79086 11.2091 3 9 3C6.79086 3 5 4.79086 5 7C5 9.20914 6.79086 11 9 11Z" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M23 21V19C22.9993 18.1137 22.7044 17.2524 22.1614 16.5523C21.6184 15.8522 20.8581 15.3516 20 15.13" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M16 3.13C16.8604 3.35031 17.623 3.85071 18.1676 4.55232C18.7122 5.25393 19.0078 6.11683 19.0078 7.005C19.0078 7.89317 18.7122 8.75607 18.1676 9.45768C17.623 10.1593 16.8604 10.6597 16 10.88" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M17 21V19C17 17.9391 16.5786 16.9217 15.8284 16.1716C15.0783 15.4214 14.0609 15 13 15H5C3.93913 15 2.92172 15.4214 2.17157 16.1716C1.42143 16.9217 1 17.9391 1 19V21" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M9 11C11.2091 11 13 9.20914 13 7C13 4.79086 11.2091 3 9 3C6.79086 3 5 4.79086 5 7C5 9.20914 6.79086 11 9 11Z" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M23 21V19C22.9993 18.1137 22.7044 17.2524 22.1614 16.5523C21.6184 15.8522 20.8581 15.3516 20 15.13" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M16 3.13C16.8604 3.35031 17.623 3.85071 18.1676 4.55232C18.7122 5.25393 19.0078 6.11683 19.0078 7.005C19.0078 7.89317 18.7122 8.75607 18.1676 9.45768C17.623 10.1593 16.8604 10.6597 16 10.88" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </div>
               </div>
@@ -289,152 +291,201 @@ export default function AdminPage() {
                 </div>
                 <div className="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="12" cy="12" r="10" stroke="#E60012" strokeWidth="2"/>
-                    <path d="M12 6V12L16 14" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <circle cx="12" cy="12" r="10" stroke="#E60012" strokeWidth="2" />
+                    <path d="M12 6V12L16 14" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </div>
               </div>
             </div>
 
-            {/* Data List */}
-            <div className="card-premium overflow-hidden">
-              <div className="px-6 py-5 border-b border-[#EEEEEE] flex items-center justify-between bg-white">
-                <h2 className="text-lg font-bold text-[#1A1A1A]">실시간 데이터 내역</h2>
-                <button 
-                  className="text-[#E60012] font-bold text-sm flex items-center gap-1 hover:underline cursor-pointer"
-                  onClick={() => setIsFullView(true)}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M15 3H21V9" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M9 21H3V15" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M21 3L14 10" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M3 21L10 14" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  전체 보기
-                </button>
-              </div>
-              
-              <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-left">
-                  <thead>
-                    <tr className="bg-[#F8F9FA]">
-                      <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest">팀 ID</th>
-                      <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest text-center">기록</th>
-                      <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest text-center">색상 순서</th>
-                      <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest text-right">턴 수</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#EEEEEE]">
+            {/* Helper to determine if Turn feature is active - show column if active */}
+            {(() => {
+              const turnEnabled = (rows as any)._settings?.isTurnEntryEnabled || false;
+
+              return (
+                <div className="card-premium overflow-hidden">
+                  <div className="px-6 py-5 border-b border-[#EEEEEE] flex items-center justify-between bg-white">
+                    <h2 className="text-lg font-bold text-[#1A1A1A]">실시간 데이터 내역</h2>
+                    <button
+                      className="text-[#E60012] font-bold text-sm flex items-center gap-1 hover:underline cursor-pointer"
+                      onClick={() => setIsFullView(true)}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M15 3H21V9" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M9 21H3V15" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M21 3L14 10" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M3 21L10 14" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      전체 보기
+                    </button>
+                  </div>
+
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className="bg-[#F8F9FA]">
+                          <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest">팀 ID</th>
+                          <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest text-center">기록 (최다 3개)</th>
+                          <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest text-center">색상 순서</th>
+                          {turnEnabled && <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest text-right">턴 수</th>}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#EEEEEE]">
+                        {rows.length > 0 ? (
+                          rows.slice().sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, 10).map((r) => {
+                            const recordsToDisplay = r.records && r.records.length > 0 ? r.records : (r.record ? [r.record] : []);
+                            // find best to highlight
+                            let bestRecIndex = 0;
+                            let bestSec = Infinity;
+                            recordsToDisplay.forEach((rec, idx) => {
+                              const sec = parseRecordToSeconds(rec);
+                              if (sec < bestSec) {
+                                bestSec = sec;
+                                bestRecIndex = idx;
+                              }
+                            });
+
+                            return (
+                              <tr key={r.id} className="hover:bg-[#F8F9FA] transition-colors group">
+                                <td className="px-6 py-5 font-bold text-[#1A1A1A]">#{r.id}</td>
+                                <td className="px-6 py-5 text-center font-black text-lg tabular-nums">
+                                  <div className="flex flex-col items-center gap-1">
+                                    {recordsToDisplay.length > 0 ? recordsToDisplay.map((rec, idx) => (
+                                      <div key={idx} className={idx === bestRecIndex ? "text-[#E60012]" : "text-[#1A1A1A] text-sm"}>
+                                        {rec}
+                                      </div>
+                                    )) : "-"}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-5">
+                                  <div className="flex items-center justify-center gap-3">
+                                    {r.colors ? (
+                                      <>
+                                        <div className="flex items-center gap-1.5">
+                                          {r.colors.map((c, i) => (
+                                            <div
+                                              key={i}
+                                              className="w-4 h-4 rounded-full border border-black/5 shadow-sm"
+                                              style={{ backgroundColor: getColorHex(c) }}
+                                            />
+                                          ))}
+                                        </div>
+                                        <span className="text-sm font-bold text-[#666666] tracking-widest">{r.colors.join("")}</span>
+                                      </>
+                                    ) : (
+                                      <span className="text-xs font-bold text-[#CCCCCC] italic">제출 대기</span>
+                                    )}
+                                  </div>
+                                </td>
+                                {turnEnabled && (
+                                  <td className="px-6 py-5 text-right">
+                                    {r.tValue !== "" ? (
+                                      <span className="px-3 py-1 bg-red-50 text-[#E60012] rounded-full text-xs font-bold border border-red-100">
+                                        {r.tValue}
+                                      </span>
+                                    ) : (
+                                      <span className="px-3 py-1 bg-[#F8F9FA] text-[#999999] rounded-full text-xs font-bold border border-[#EEEEEE]">
+                                        대기 중
+                                      </span>
+                                    )}
+                                  </td>
+                                )}
+                              </tr>
+                            );
+                          })
+                        ) : (
+                          <tr>
+                            <td colSpan={turnEnabled ? 4 : 3} className="px-6 py-20 text-center text-[#999999] font-medium italic">
+                              제출된 데이터가 없습니다.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile Card List */}
+                  <div className="md:hidden divide-y divide-[#EEEEEE]">
                     {rows.length > 0 ? (
-                      rows.slice().sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, 10).map((r) => (
-                        <tr key={r.id} className="hover:bg-[#F8F9FA] transition-colors group">
-                          <td className="px-6 py-5 font-bold text-[#1A1A1A]">#{r.id}</td>
-                          <td className="px-6 py-5 text-center font-black text-[#E60012] text-lg tabular-nums">
-                            {r.record || "-"}
-                          </td>
-                          <td className="px-6 py-5">
-                            <div className="flex items-center justify-center gap-3">
+                      rows.slice().sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, 10).map((r) => {
+                        const recordsToDisplay = r.records && r.records.length > 0 ? r.records : (r.record ? [r.record] : []);
+                        let bestRecIndex = 0;
+                        let bestSec = Infinity;
+                        recordsToDisplay.forEach((rec, idx) => {
+                          const sec = parseRecordToSeconds(rec);
+                          if (sec < bestSec) {
+                            bestSec = sec;
+                            bestRecIndex = idx;
+                          }
+                        });
+
+                        return (
+                          <div key={r.id} className="p-5 space-y-4">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-black text-[#999999]">팀 #{r.id}</span>
+                              <span className="text-xs text-[#999999] font-medium">{new Date(r.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                            <div className="flex items-start justify-between">
+                              <div className="space-y-1">
+                                <p className="text-[10px] font-bold text-[#999999] uppercase tracking-wider">기록</p>
+                                <div className="flex flex-col gap-1">
+                                  {recordsToDisplay.length > 0 ? recordsToDisplay.map((rec, idx) => (
+                                    <p key={idx} className={idx === bestRecIndex ? "text-2xl font-black text-[#E60012] tabular-nums" : "text-lg font-bold text-[#1A1A1A] tabular-nums"}>
+                                      {rec}
+                                    </p>
+                                  )) : <p className="text-2xl font-black text-[#E60012] tabular-nums">-</p>}
+                                </div>
+                              </div>
+                              {turnEnabled && (
+                                <div className="text-right space-y-1">
+                                  <p className="text-[10px] font-bold text-[#999999] uppercase tracking-wider">턴 수</p>
+                                  {r.tValue !== "" ? (
+                                    <span className="inline-block px-3 py-1 bg-red-50 text-[#E60012] rounded-full text-sm font-bold border border-red-100">
+                                      {r.tValue}
+                                    </span>
+                                  ) : (
+                                    <span className="inline-block px-3 py-1 bg-[#F8F9FA] text-[#999999] rounded-full text-sm font-bold border border-[#EEEEEE]">
+                                      대기 중
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            <div className="pt-2">
+                              <p className="text-[10px] font-bold text-[#999999] uppercase tracking-wider mb-2">색상 순서</p>
                               {r.colors ? (
-                                <>
+                                <div className="flex items-center gap-3 bg-[#F8F9FA] p-3 rounded-xl border border-[#EEEEEE]">
+                                  <div className="flex items-center gap-1.5 font-bold text-[#666666] tracking-widest text-sm min-w-[50px]">
+                                    {r.colors.join("")}
+                                  </div>
                                   <div className="flex items-center gap-1.5">
                                     {r.colors.map((c, i) => (
-                                      <div 
-                                        key={i} 
+                                      <div
+                                        key={i}
                                         className="w-4 h-4 rounded-full border border-black/5 shadow-sm"
                                         style={{ backgroundColor: getColorHex(c) }}
                                       />
                                     ))}
                                   </div>
-                                  <span className="text-sm font-bold text-[#666666] tracking-widest">{r.colors.join("")}</span>
-                                </>
+                                </div>
                               ) : (
-                                <span className="text-xs font-bold text-[#CCCCCC] italic">제출 대기</span>
+                                <div className="bg-[#F8F9FA] p-3 rounded-xl border border-[#EEEEEE] text-center">
+                                  <span className="text-xs font-bold text-[#CCCCCC] italic">제출 대기 중</span>
+                                </div>
                               )}
                             </div>
-                          </td>
-                          <td className="px-6 py-5 text-right">
-                            {r.tValue !== "" ? (
-                              <span className="px-3 py-1 bg-red-50 text-[#E60012] rounded-full text-xs font-bold border border-red-100">
-                                {r.tValue}
-                              </span>
-                            ) : (
-                              <span className="px-3 py-1 bg-[#F8F9FA] text-[#999999] rounded-full text-xs font-bold border border-[#EEEEEE]">
-                                대기 중
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      ))
+                          </div>
+                        )
+                      })
                     ) : (
-                      <tr>
-                        <td colSpan={4} className="px-6 py-20 text-center text-[#999999] font-medium italic">
-                          제출된 데이터가 없습니다.
-                        </td>
-                      </tr>
+                      <div className="px-6 py-20 text-center text-[#999999] font-medium italic">
+                        제출된 데이터가 없습니다.
+                      </div>
                     )}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Mobile Card List */}
-              <div className="md:hidden divide-y divide-[#EEEEEE]">
-                {rows.length > 0 ? (
-                  rows.slice().sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, 10).map((r) => (
-                    <div key={r.id} className="p-5 space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-black text-[#999999]">팀 #{r.id}</span>
-                        <span className="text-xs text-[#999999] font-medium">{new Date(r.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-1">
-                          <p className="text-[10px] font-bold text-[#999999] uppercase tracking-wider">기록</p>
-                          <p className="text-2xl font-black text-[#E60012] tabular-nums">{r.record || "-"}</p>
-                        </div>
-                        <div className="text-right space-y-1">
-                          <p className="text-[10px] font-bold text-[#999999] uppercase tracking-wider">턴 수</p>
-                          {r.tValue !== "" ? (
-                            <span className="inline-block px-3 py-1 bg-red-50 text-[#E60012] rounded-full text-sm font-bold border border-red-100">
-                              {r.tValue}
-                            </span>
-                          ) : (
-                            <span className="inline-block px-3 py-1 bg-[#F8F9FA] text-[#999999] rounded-full text-sm font-bold border border-[#EEEEEE]">
-                              대기 중
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="pt-2">
-                        <p className="text-[10px] font-bold text-[#999999] uppercase tracking-wider mb-2">색상 순서</p>
-                        {r.colors ? (
-                          <div className="flex items-center gap-3 bg-[#F8F9FA] p-3 rounded-xl border border-[#EEEEEE]">
-                            <div className="flex items-center gap-1.5 font-bold text-[#666666] tracking-widest text-sm min-w-[50px]">
-                              {r.colors.join("")}
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              {r.colors.map((c, i) => (
-                                <div 
-                                  key={i} 
-                                  className="w-4 h-4 rounded-full border border-black/5 shadow-sm"
-                                  style={{ backgroundColor: getColorHex(c) }}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="bg-[#F8F9FA] p-3 rounded-xl border border-[#EEEEEE] text-center">
-                            <span className="text-xs font-bold text-[#CCCCCC] italic">제출 대기 중</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="px-6 py-20 text-center text-[#999999] font-medium italic">
-                    제출된 데이터가 없습니다.
                   </div>
-                )}
-              </div>
-            </div>
+                </div>
+              );
+            })()}
           </>
         )}
 
@@ -473,12 +524,10 @@ export default function AdminPage() {
                       const isTop20 = idx < top20Percent.length;
                       const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : null;
                       return (
-                        <div key={r.id} className={`flex items-center gap-2 md:gap-3 p-2 md:p-3 rounded-xl transition-all ${
-                          isTop20 ? 'bg-green-50/80 border border-green-200' : 'bg-[#FAFAFA] border border-transparent'
-                        }`}>
-                          <span className={`w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center text-[10px] md:text-xs font-black shrink-0 ${
-                            isTop20 ? 'bg-green-500 text-white shadow-sm' : 'bg-[#EEEEEE] text-[#999999]'
+                        <div key={r.id} className={`flex items-center gap-2 md:gap-3 p-2 md:p-3 rounded-xl transition-all ${isTop20 ? 'bg-green-50/80 border border-green-200' : 'bg-[#FAFAFA] border border-transparent'
                           }`}>
+                          <span className={`w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center text-[10px] md:text-xs font-black shrink-0 ${isTop20 ? 'bg-green-500 text-white shadow-sm' : 'bg-[#EEEEEE] text-[#999999]'
+                            }`}>
                             {medal || (idx + 1)}
                           </span>
                           <span className="font-bold text-[#1A1A1A] w-10 md:w-14 text-xs md:text-sm shrink-0">#{r.id}</span>
@@ -490,11 +539,10 @@ export default function AdminPage() {
                           <div className="flex-1 min-w-0">
                             <div className="h-5 md:h-6 rounded-full overflow-hidden bg-[#EEEEEE]/60">
                               <div
-                                className={`h-full rounded-full transition-all duration-700 ${
-                                  isTop20
+                                className={`h-full rounded-full transition-all duration-700 ${isTop20
                                     ? 'bg-gradient-to-r from-green-400 to-emerald-500'
                                     : 'bg-gradient-to-r from-gray-300 to-gray-400'
-                                }`}
+                                  }`}
                                 style={{ width: `${Math.max(percentage, 8)}%` }}
                               />
                             </div>
@@ -511,9 +559,9 @@ export default function AdminPage() {
                 <section className="card-premium overflow-hidden border-2 border-red-50">
                   <div className="px-6 py-5 border-b border-red-100 bg-red-50/30 flex items-center gap-2">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M2 17L12 22L22 17" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M2 12L12 17L22 12" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M2 17L12 22L22 17" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M2 12L12 17L22 12" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                     <h2 className="text-xl font-bold text-[#E60012]">데이터 학습 인사이트</h2>
                   </div>
@@ -538,7 +586,7 @@ export default function AdminPage() {
                           <div className="space-y-2">
                             {top20Percent.map((r, i) => (
                               <div key={r.id} className="flex items-center gap-2 md:gap-3 p-2.5 md:p-3 bg-white rounded-xl border border-green-100/50 shadow-sm">
-                                <span className="text-base md:text-lg shrink-0">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i+1}`}</span>
+                                <span className="text-base md:text-lg shrink-0">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`}</span>
                                 <span className="font-bold text-[#1A1A1A] text-sm">팀 #{r.id}</span>
                                 <div className="flex items-center gap-1 shrink-0">
                                   {r.colors?.map((c, j) => (
@@ -620,9 +668,9 @@ export default function AdminPage() {
                     {insights.length === 0 && (
                       <div className="py-16 text-center space-y-4">
                         <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                              <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3" stroke="#E60012" strokeWidth="2" strokeLinecap="round"/>
-                           </svg>
+                          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3" stroke="#E60012" strokeWidth="2" strokeLinecap="round" />
+                          </svg>
                         </div>
                         <p className="text-[#999999] text-lg font-bold italic">아직 분석할 패턴이 부족합니다.</p>
                         <p className="text-xs text-[#CCCCCC] uppercase tracking-[0.2em] font-black">데이터가 더 쌓이면 인사이트가 표시됩니다</p>
@@ -675,18 +723,18 @@ export default function AdminPage() {
               <section className="card-premium overflow-hidden border-2 border-red-50">
                 <div className="px-6 py-5 border-b border-red-100 bg-red-50/30 flex items-center gap-2">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M2 17L12 22L22 17" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M2 12L12 17L22 12" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M2 17L12 22L22 17" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M2 12L12 17L22 12" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                   <h2 className="text-xl font-bold text-[#E60012]">데이터 학습 인사이트</h2>
                 </div>
                 <div className="p-8 bg-white">
                   <div className="py-20 text-center space-y-4">
                     <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3" stroke="#E60012" strokeWidth="2" strokeLinecap="round"/>
-                       </svg>
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3" stroke="#E60012" strokeWidth="2" strokeLinecap="round" />
+                      </svg>
                     </div>
                     <p className="text-[#999999] text-lg font-bold italic">데이터가 쌓이면 실시간 분석 인사이트가 여기에 표시됩니다.</p>
                     <p className="text-xs text-[#CCCCCC] uppercase tracking-[0.2em] font-black">Real-time Analysis Engine Initializing...</p>
@@ -721,24 +769,24 @@ export default function AdminPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-black text-[#999999] uppercase tracking-widest mb-2">분 (Min)</label>
-                    <select 
+                    <select
                       className="input-premium text-center text-xl font-bold appearance-none bg-white"
                       value={recMin}
                       onChange={(e) => setRecMin(Number(e.target.value))}
                     >
-                      {Array.from({length: 60}, (_, i) => (
+                      {Array.from({ length: 60 }, (_, i) => (
                         <option key={i} value={i}>{i}분</option>
                       ))}
                     </select>
                   </div>
                   <div>
                     <label className="block text-xs font-black text-[#999999] uppercase tracking-widest mb-2">초 (Sec)</label>
-                    <select 
+                    <select
                       className="input-premium text-center text-xl font-bold appearance-none bg-white"
                       value={recSec}
                       onChange={(e) => setRecSec(Number(e.target.value))}
                     >
-                      {Array.from({length: 60}, (_, i) => (
+                      {Array.from({ length: 60 }, (_, i) => (
                         <option key={i} value={i}>{String(i).padStart(2, '0')}초</option>
                       ))}
                     </select>
@@ -746,12 +794,11 @@ export default function AdminPage() {
                 </div>
 
                 <div className="pt-4">
-                  <button 
+                  <button
                     onClick={handleRecordSubmit}
                     disabled={recStatus === "전송 중..." || recTeamId === ""}
-                    className={`btn-primary w-full text-lg h-16 rounded-2xl transition-all ${
-                      (recStatus === "전송 중..." || recTeamId === "") ? "opacity-50 cursor-not-allowed shadow-none" : ""
-                    }`}
+                    className={`btn-primary w-full text-lg h-16 rounded-2xl transition-all ${(recStatus === "전송 중..." || recTeamId === "") ? "opacity-50 cursor-not-allowed shadow-none" : ""
+                      }`}
                   >
                     {recStatus === "전송 중..." ? (
                       <div className="flex items-center gap-2">
@@ -764,11 +811,10 @@ export default function AdminPage() {
                     ) : "기록 제출하기"}
                   </button>
                   {recStatus && recStatus !== "전송 중..." && (
-                    <div className={`mt-4 p-3 rounded-xl border text-center font-bold text-sm animate-fade-in ${
-                      recStatus.includes("완료") 
-                        ? "bg-green-50 border-green-100 text-green-600" 
+                    <div className={`mt-4 p-3 rounded-xl border text-center font-bold text-sm animate-fade-in ${recStatus.includes("완료")
+                        ? "bg-green-50 border-green-100 text-green-600"
                         : "bg-red-50 border-red-100 text-[#E60012]"
-                    }`}>
+                      }`}>
                       {recStatus}
                     </div>
                   )}
@@ -777,17 +823,17 @@ export default function AdminPage() {
             </section>
 
             <section className="card-premium overflow-hidden">
-                <div className="px-6 py-4 border-b border-[#EEEEEE] bg-white">
-                    <h3 className="text-sm font-bold text-[#1A1A1A]">최근 입력 기록</h3>
-                </div>
-                <div className="divide-y divide-[#EEEEEE]">
-                    {rows.slice().sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, 5).map(r => (
-                        <div key={r.id} className="px-6 py-4 flex items-center justify-between bg-white text-sm">
-                            <span className="font-bold">#{r.id}팀</span>
-                            <span className="font-black text-[#E60012]">{r.record || "-"}</span>
-                        </div>
-                    ))}
-                </div>
+              <div className="px-6 py-4 border-b border-[#EEEEEE] bg-white">
+                <h3 className="text-sm font-bold text-[#1A1A1A]">최근 입력 기록</h3>
+              </div>
+              <div className="divide-y divide-[#EEEEEE]">
+                {rows.slice().sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, 5).map(r => (
+                  <div key={r.id} className="px-6 py-4 flex items-center justify-between bg-white text-sm">
+                    <span className="font-bold">#{r.id}팀</span>
+                    <span className="font-black text-[#E60012]">{r.record || "-"}</span>
+                  </div>
+                ))}
+              </div>
             </section>
           </div>
         )}
@@ -796,179 +842,254 @@ export default function AdminPage() {
       {/* Full View Modal */}
       {isFullView && (
         <div className="fixed inset-0 z-50 bg-white flex flex-col animate-fade-in">
-          <header className="px-6 py-4 border-b border-[#EEEEEE] flex items-center justify-between sticky top-0 bg-white z-10 h-16 sm:h-20">
+          <header className="px-6 py-4 border-b border-[#EEEEEE] flex flex-col sm:flex-row items-start sm:items-center justify-between sticky top-0 bg-white z-10 sm:h-20 gap-4 sm:gap-0 shadow-sm">
             <h2 className="text-xl font-bold text-[#1A1A1A]">전체 데이터 내역</h2>
-            <button 
-              onClick={() => setIsFullView(false)}
-              className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M18 6L6 18M6 6L18 18" stroke="#1A1A1A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
+            <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+              <select
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value)}
+                className="input-premium py-2 px-4 shadow-none bg-[#F8F9FA] border border-[#EEEEEE] text-sm font-bold text-[#1A1A1A] max-w-[200px]"
+              >
+                <option value="latest">최신 등록순</option>
+                <option value="team">팀 순서대로 (1, 2, 3...)</option>
+                <option value="record">기록이 빠른 순서대로</option>
+                <option value="turn">턴 수가 적은 순서대로</option>
+              </select>
+              <button
+                onClick={() => setIsFullView(false)}
+                className="w-10 h-10 flex items-center justify-center rounded-full bg-[#F8F9FA] hover:bg-gray-200 transition-colors"
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M18 6L6 18M6 6L18 18" stroke="#1A1A1A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            </div>
           </header>
-          
+
           <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 pb-24">
-            <div className="card-premium overflow-hidden">
-              <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-left">
-                  <thead>
-                    <tr className="bg-[#F8F9FA] sticky top-0 z-10">
-                      <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest leading-none">팀 ID</th>
-                      <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest text-center leading-none">기록</th>
-                      <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest text-center leading-none">색상 순서</th>
-                      <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest text-right leading-none">턴 수</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#EEEEEE]">
-                    {rows.length > 0 ? (
-                      rows.slice().sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).map((r) => (
-                        <tr key={r.id} className="hover:bg-[#F8F9FA] transition-colors">
-                          <td className="px-6 py-5 font-bold text-[#1A1A1A]">#{r.id}</td>
-                          <td className="px-6 py-5 text-center font-black text-[#E60012] tabular-nums">
-                            {r.record || "-"}
-                          </td>
-                          <td className="px-6 py-5">
-                            <div className="flex items-center justify-center gap-3">
+            {(() => {
+              const turnEnabled = (rows as any)._settings?.isTurnEntryEnabled || false;
+              let sortedList = rows.slice();
+
+              if (sortOption === "latest") {
+                sortedList.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+              } else if (sortOption === "team") {
+                sortedList.sort((a, b) => a.id - b.id);
+              } else if (sortOption === "record") {
+                sortedList.sort((a, b) => parseRecordToSeconds(a.record) - parseRecordToSeconds(b.record));
+              } else if (sortOption === "turn") {
+                sortedList.sort((a, b) => {
+                  const ta = a.tValue ? parseInt(a.tValue.split("T")[0]) : Infinity;
+                  const tb = b.tValue ? parseInt(b.tValue.split("T")[0]) : Infinity;
+                  return ta - tb;
+                });
+              }
+
+              return (
+                <div className="card-premium overflow-hidden">
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className="bg-[#F8F9FA] sticky top-0 z-10">
+                          <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest leading-none">팀 ID</th>
+                          <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest text-center leading-none">기록</th>
+                          <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest text-center leading-none">색상 순서</th>
+                          {turnEnabled && <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest text-right leading-none">턴 수</th>}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#EEEEEE]">
+                        {sortedList.length > 0 ? (
+                          sortedList.map((r) => {
+                            const recordsToDisplay = r.records && r.records.length > 0 ? r.records : (r.record ? [r.record] : []);
+                            let bestRecIndex = 0;
+                            let bestSec = Infinity;
+                            recordsToDisplay.forEach((rec, idx) => {
+                              const sec = parseRecordToSeconds(rec);
+                              if (sec < bestSec) {
+                                bestSec = sec;
+                                bestRecIndex = idx;
+                              }
+                            });
+
+                            return (
+                              <tr key={r.id} className="hover:bg-[#F8F9FA] transition-colors">
+                                <td className="px-6 py-5 font-bold text-[#1A1A1A]">#{r.id}</td>
+                                <td className="px-6 py-5 text-center font-black tabular-nums">
+                                  <div className="flex flex-col items-center gap-1">
+                                    {recordsToDisplay.length > 0 ? recordsToDisplay.map((rec, idx) => (
+                                      <div key={idx} className={idx === bestRecIndex ? "text-[#E60012] text-lg" : "text-[#1A1A1A] text-sm"}>
+                                        {rec}
+                                      </div>
+                                    )) : "-"}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-5">
+                                  <div className="flex items-center justify-center gap-3">
+                                    {r.colors ? (
+                                      <>
+                                        <div className="flex items-center gap-1.5">
+                                          {r.colors.map((c, i) => (
+                                            <div
+                                              key={i}
+                                              className="w-4 h-4 rounded-full border border-black/5 shadow-sm"
+                                              style={{ backgroundColor: getColorHex(c) }}
+                                            />
+                                          ))}
+                                        </div>
+                                        <span className="text-sm font-bold text-[#666666] tracking-widest">{r.colors.join("")}</span>
+                                      </>
+                                    ) : (
+                                      <span className="text-xs font-bold text-[#CCCCCC] italic">제출 대기</span>
+                                    )}
+                                  </div>
+                                </td>
+                                {turnEnabled && (
+                                  <td className="px-6 py-5 text-right">
+                                    {r.tValue !== "" ? (
+                                      <span className="px-3 py-1 bg-red-50 text-[#E60012] rounded-full text-xs font-bold border border-red-100">
+                                        {r.tValue}
+                                      </span>
+                                    ) : (
+                                      <span className="px-3 py-1 bg-[#F8F9FA] text-[#999999] rounded-full text-xs font-bold border border-[#EEEEEE]">
+                                        대기 중
+                                      </span>
+                                    )}
+                                  </td>
+                                )}
+                              </tr>
+                            )
+                          })
+                        ) : (
+                          <tr>
+                            <td colSpan={turnEnabled ? 4 : 3} className="px-6 py-20 text-center text-[#999999] font-medium italic">
+                              제출된 데이터가 없습니다.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile Card List for Full View */}
+                  <div className="md:hidden divide-y divide-[#EEEEEE]">
+                    {sortedList.length > 0 ? (
+                      sortedList.map((r) => {
+                        const recordsToDisplay = r.records && r.records.length > 0 ? r.records : (r.record ? [r.record] : []);
+                        let bestRecIndex = 0;
+                        let bestSec = Infinity;
+                        recordsToDisplay.forEach((rec, idx) => {
+                          const sec = parseRecordToSeconds(rec);
+                          if (sec < bestSec) {
+                            bestSec = sec;
+                            bestRecIndex = idx;
+                          }
+                        });
+
+                        return (
+                          <div key={r.id} className="p-5 space-y-4">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-black text-[#999999]">팀 #{r.id}</span>
+                              <span className="text-xs text-[#999999] font-medium">{new Date(r.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                            <div className="flex items-start justify-between">
+                              <div className="space-y-1">
+                                <p className="text-[10px] font-bold text-[#999999] uppercase tracking-wider">기록</p>
+                                <div className="flex flex-col gap-1">
+                                  {recordsToDisplay.length > 0 ? recordsToDisplay.map((rec, idx) => (
+                                    <p key={idx} className={idx === bestRecIndex ? "text-2xl font-black text-[#E60012] tabular-nums" : "text-lg font-bold text-[#1A1A1A] tabular-nums"}>
+                                      {rec}
+                                    </p>
+                                  )) : <p className="text-2xl font-black text-[#E60012] tabular-nums">-</p>}
+                                </div>
+                              </div>
+                              {turnEnabled && (
+                                <div className="text-right space-y-1">
+                                  <p className="text-[10px] font-bold text-[#999999] uppercase tracking-wider">턴 수</p>
+                                  {r.tValue !== "" ? (
+                                    <span className="inline-block px-3 py-1 bg-red-50 text-[#E60012] rounded-full text-sm font-bold border border-red-100">
+                                      {r.tValue}
+                                    </span>
+                                  ) : (
+                                    <span className="inline-block px-3 py-1 bg-[#F8F9FA] text-[#999999] rounded-full text-sm font-bold border border-[#EEEEEE]">
+                                      대기 중
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            <div className="pt-2">
+                              <p className="text-[10px] font-bold text-[#999999] uppercase tracking-wider mb-2">색상 순서</p>
                               {r.colors ? (
-                                <>
+                                <div className="flex items-center gap-3 bg-[#F8F9FA] p-3 rounded-xl border border-[#EEEEEE]">
+                                  <div className="flex items-center gap-1.5 font-bold text-[#666666] tracking-widest text-sm min-w-[30px]">
+                                    {r.colors.join("")}
+                                  </div>
                                   <div className="flex items-center gap-1.5">
                                     {r.colors.map((c, i) => (
-                                      <div 
-                                        key={i} 
+                                      <div
+                                        key={i}
                                         className="w-4 h-4 rounded-full border border-black/5 shadow-sm"
                                         style={{ backgroundColor: getColorHex(c) }}
                                       />
                                     ))}
                                   </div>
-                                  <span className="text-sm font-bold text-[#666666] tracking-widest">{r.colors.join("")}</span>
-                                </>
+                                </div>
                               ) : (
-                                <span className="text-xs font-bold text-[#CCCCCC] italic">제출 대기</span>
+                                <div className="bg-[#F8F9FA] p-3 rounded-xl border border-[#EEEEEE] text-center">
+                                  <span className="text-xs font-bold text-[#CCCCCC] italic">제출 대기 중</span>
+                                </div>
                               )}
                             </div>
-                          </td>
-                          <td className="px-6 py-5 text-right">
-                            {r.tValue !== "" ? (
-                              <span className="px-3 py-1 bg-red-50 text-[#E60012] rounded-full text-xs font-bold border border-red-100">
-                                {r.tValue}
-                              </span>
-                            ) : (
-                              <span className="px-3 py-1 bg-[#F8F9FA] text-[#999999] rounded-full text-xs font-bold border border-[#EEEEEE]">
-                                대기 중
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      ))
+                          </div>
+                        )
+                      })
                     ) : (
-                      <tr>
-                        <td colSpan={4} className="px-6 py-20 text-center text-[#999999] font-medium italic">
-                          제출된 데이터가 없습니다.
-                        </td>
-                      </tr>
+                      <div className="px-6 py-20 text-center text-[#999999] font-medium italic">
+                        제출된 데이터가 없습니다.
+                      </div>
                     )}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Mobile Card List for Full View */}
-              <div className="md:hidden divide-y divide-[#EEEEEE]">
-                {rows.length > 0 ? (
-                  rows.slice().sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).map((r) => (
-                    <div key={r.id} className="p-5 space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-black text-[#999999]">팀 #{r.id}</span>
-                        <span className="text-xs text-[#999999] font-medium">{new Date(r.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-1">
-                          <p className="text-[10px] font-bold text-[#999999] uppercase tracking-wider">기록</p>
-                          <p className="text-2xl font-black text-[#E60012] tabular-nums">{r.record || "-"}</p>
-                        </div>
-                        <div className="text-right space-y-1">
-                          <p className="text-[10px] font-bold text-[#999999] uppercase tracking-wider">턴 수</p>
-                          {r.tValue !== "" ? (
-                            <span className="inline-block px-3 py-1 bg-red-50 text-[#E60012] rounded-full text-sm font-bold border border-red-100">
-                              {r.tValue}
-                            </span>
-                          ) : (
-                            <span className="inline-block px-3 py-1 bg-[#F8F9FA] text-[#999999] rounded-full text-sm font-bold border border-[#EEEEEE]">
-                              대기 중
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="pt-2">
-                        <p className="text-[10px] font-bold text-[#999999] uppercase tracking-wider mb-2">색상 순서</p>
-                        {r.colors ? (
-                          <div className="flex items-center gap-3 bg-[#F8F9FA] p-3 rounded-xl border border-[#EEEEEE]">
-                            <div className="flex items-center gap-1.5 font-bold text-[#666666] tracking-widest text-sm min-w-[30px]">
-                              {r.colors.join("")}
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              {r.colors.map((c, i) => (
-                                <div 
-                                  key={i} 
-                                  className="w-4 h-4 rounded-full border border-black/5 shadow-sm"
-                                  style={{ backgroundColor: getColorHex(c) }}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="bg-[#F8F9FA] p-3 rounded-xl border border-[#EEEEEE] text-center">
-                            <span className="text-xs font-bold text-[#CCCCCC] italic">제출 대기 중</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="px-6 py-20 text-center text-[#999999] font-medium italic">
-                    제출된 데이터가 없습니다.
                   </div>
-                )}
-              </div>
-            </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
 
       {/* Bottom Tabs Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#EEEEEE] px-4 py-3 pb-6 sm:pb-3 flex items-center justify-between z-40 max-w-4xl mx-auto shadow-[0_-8px_24px_rgba(0,0,0,0.06)] rounded-t-[2.5rem]">
-        <button 
+        <button
           onClick={() => setActiveTab("dashboard")}
           className={`flex flex-col items-center gap-1.5 flex-1 transition-all ${activeTab === "dashboard" ? "text-[#E60012]" : "text-[#CCCCCC]"}`}
         >
           <div className={`p-2.5 rounded-2xl transition-colors ${activeTab === "dashboard" ? "bg-red-50" : "hover:bg-gray-50"}`}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h6v6h-6v-6z" fill="currentColor"/>
+              <path d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h6v6h-6v-6z" fill="currentColor" />
             </svg>
           </div>
           <span className="text-[10px] font-black uppercase tracking-tight">현황</span>
         </button>
 
-        <button 
+        <button
           onClick={() => setActiveTab("recorder")}
           className={`flex flex-col items-center gap-1.5 flex-1 transition-all ${activeTab === "recorder" ? "text-[#E60012]" : "text-[#CCCCCC]"}`}
         >
           <div className={`p-2.5 rounded-2xl transition-colors ${activeTab === "recorder" ? "bg-red-50" : "hover:bg-gray-50"}`}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.5"/>
-                <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.5" />
+              <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
             </svg>
           </div>
           <span className="text-[10px] font-black uppercase tracking-tight">입력</span>
         </button>
 
-        <button 
+        <button
           onClick={() => setActiveTab("stats")}
           className={`flex flex-col items-center gap-1.5 flex-1 transition-all ${activeTab === "stats" ? "text-[#E60012]" : "text-[#CCCCCC]"}`}
         >
           <div className={`p-2.5 rounded-2xl transition-colors ${activeTab === "stats" ? "bg-red-50" : "hover:bg-gray-50"}`}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M18 20V10M12 20V4M6 20v-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M18 20V10M12 20V4M6 20v-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
           <span className="text-[10px] font-black uppercase tracking-tight">통계</span>
