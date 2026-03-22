@@ -22,10 +22,11 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<string>("dashboard");
   const [isFullView, setIsFullView] = useState<boolean>(false);
   const [sortOption, setSortOption] = useState<string>("latest"); // new state for sorting
+  const [showAnalysis, setShowAnalysis] = useState<boolean>(false);
 
   // Recorder State
   const [recTeamId, setRecTeamId] = useState<number | "">("");
-  const [recMin, setRecMin] = useState<number>(0);
+  const [recMin, setRecMin] = useState<number>(1);
   const [recSec, setRecSec] = useState<number>(0);
   const [recStatus, setRecStatus] = useState<string>("");
 
@@ -464,7 +465,22 @@ export default function AdminPage() {
         {activeTab === "stats" && (
           <div className="animate-fade-in max-w-4xl mx-auto space-y-8">
 
-            {validRows.length >= 3 ? (
+            {/* 분석 버튼 */}
+            <section className="card-premium p-6 text-center space-y-4">
+              <div>
+                <p className="text-sm font-semibold text-[#666666] mb-1">분석 가능한 팀 수 (기록 + 턴 수 완료)</p>
+                <p className="text-4xl font-black text-[#1A1A1A]">{validRows.length}<span className="text-lg text-[#999999] font-bold ml-1">팀</span></p>
+              </div>
+              <button
+                onClick={() => setShowAnalysis(true)}
+                disabled={validRows.length < 3}
+                className={`btn-primary w-full max-w-xs mx-auto text-lg h-14 rounded-2xl transition-all ${validRows.length < 3 ? "opacity-50 cursor-not-allowed shadow-none" : ""}`}
+              >
+                {validRows.length < 3 ? `분석하려면 최소 3팀 필요 (현재 ${validRows.length}팀)` : "분석"}
+              </button>
+            </section>
+
+            {showAnalysis && validRows.length >= 3 ? (
               <>
                 {/* Summary Stats */}
                 <div className="grid grid-cols-3 gap-3 md:gap-4">
@@ -745,8 +761,8 @@ export default function AdminPage() {
                       value={recMin}
                       onChange={(e) => setRecMin(Number(e.target.value))}
                     >
-                      {Array.from({ length: 60 }, (_, i) => (
-                        <option key={i} value={i}>{i}분</option>
+                      {Array.from({ length: 15 }, (_, i) => (
+                        <option key={i + 1} value={i + 1}>{i + 1}분</option>
                       ))}
                     </select>
                   </div>

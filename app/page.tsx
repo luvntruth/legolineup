@@ -27,7 +27,7 @@ export default function HomePage() {
   const [range, setRange] = useState<{ min: number; max: number }>({ min: 1, max: 100 });
   const [colors, setColors] = useState<Color[]>([...COLORS]);
   const [tValue, setTValue] = useState<string>("");
-  const [tParts, setTParts] = useState<{ a: number; b: number }>({ a: 1, b: 1 });
+  const [tParts, setTParts] = useState<{ a: number; b: number }>({ a: 2, b: 1 });
   const [status, setStatus] = useState<string>("");
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [isTurnEnabled, setIsTurnEnabled] = useState<boolean>(false);
@@ -286,42 +286,21 @@ export default function HomePage() {
             </section>
 
             <section>
-              <h2 className="text-lg font-bold text-[#1A1A1A] mb-4">턴 수 선택 (숫자T+숫자)</h2>
-              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-                <div className="relative">
-                  <select
-                    className="input-premium appearance-none pr-10 text-center text-xl font-bold"
-                    value={tParts.a}
-                    onChange={(e) => setTParts(prev => ({ ...prev, a: Number(e.target.value) }))}
-                  >
-                    {Array.from({length: 10}, (_, i) => (
-                      <option key={i+1} value={i+1}>{i+1}</option>
-                    ))}
-                  </select>
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-30">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </div>
-                </div>
-                
-                <span className="text-2xl font-black text-[#1A1A1A]">T +</span>
-
-                <div className="relative">
-                  <select
-                    className="input-premium appearance-none pr-10 text-center text-xl font-bold"
-                    value={tParts.b}
-                    onChange={(e) => setTParts(prev => ({ ...prev, b: Number(e.target.value) }))}
-                  >
-                    {Array.from({length: 10}, (_, i) => (
-                      <option key={i+1} value={i+1}>{i+1}</option>
-                    ))}
-                  </select>
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-30">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </div>
+              <h2 className="text-lg font-bold text-[#1A1A1A] mb-4">턴 수 선택</h2>
+              <div className="relative">
+                <select
+                  className="input-premium appearance-none pr-10 text-center text-2xl font-black"
+                  value={tParts.a}
+                  onChange={(e) => setTParts({ a: Number(e.target.value), b: 1 })}
+                >
+                  {[2, 3, 4, 5].map((v) => (
+                    <option key={v} value={v}>{v}T+1</option>
+                  ))}
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-30">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
                 </div>
               </div>
             </section>
