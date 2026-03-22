@@ -2,6 +2,7 @@ import React from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Color } from "@/lib/constants";
+import { getColorHex, getColorName } from "@/lib/utils";
 
 interface SortableLegoItemProps {
   id: string;
@@ -16,28 +17,6 @@ export function SortableLegoItem({ id, color, index }: SortableLegoItemProps) {
     transform: CSS.Transform.toString(transform),
     transition,
     zIndex: isDragging ? 50 : "auto",
-  };
-
-  const getColorHex = (c: Color) => {
-    switch (c) {
-      case "빨": return "#FF3B30";
-      case "노": return "#FFCC00";
-      case "파": return "#007AFF";
-      case "초": return "#34C759";
-      case "흰": return "#FFFFFF";
-      default: return "#FFFFFF";
-    }
-  };
-
-  const getColorName = (c: Color) => {
-    switch (c) {
-      case "빨": return "빨강";
-      case "노": return "노랑";
-      case "파": return "파랑";
-      case "초": return "초록";
-      case "흰": return "흰색";
-      default: return "";
-    }
   };
 
   return (

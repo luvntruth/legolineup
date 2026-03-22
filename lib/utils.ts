@@ -13,3 +13,32 @@ export function getLegoColorClass(color: string) {
       return "bg-white text-black shadow-gray-300";
   }
 }
+
+export function getColorHex(c: string): string {
+  switch (c) {
+    case "빨": return "#FF3B30";
+    case "노": return "#FFCC00";
+    case "파": return "#007AFF";
+    case "초": return "#34C759";
+    case "흰": return "#FFFFFF";
+    default: return "#F2F2F7";
+  }
+}
+
+export function getColorName(c: string): string {
+  switch (c) {
+    case "빨": return "빨강";
+    case "노": return "노랑";
+    case "파": return "파랑";
+    case "초": return "초록";
+    case "흰": return "흰색";
+    default: return "";
+  }
+}
+
+export function parseRecordToSeconds(record: string): number {
+  if (!record) return Infinity;
+  const match = record.match(/(\d+)'\s*(\d+)"/);
+  if (!match) return Infinity;
+  return parseInt(match[1]) * 60 + parseInt(match[2]);
+}

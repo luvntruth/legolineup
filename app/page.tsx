@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { COLORS, T_VALUES, Color, TValue } from "@/lib/constants";
+import { onSettingsSnapshot } from "@/lib/db";
+import { getRange } from "@/lib/db";
 import {
   DndContext,
   closestCenter,
@@ -31,17 +33,11 @@ export default function HomePage() {
   const [isTurnEnabled, setIsTurnEnabled] = useState<boolean>(false);
 
   useEffect(() => {
-    const checkSettings = () => {
-      fetch(`/api/data?t=${Date.now()}`, { cache: "no-store" })
-        .then((res) => res.json())
-        .then((d) => {
-          if (d?.range) setRange(d.range);
-          if (d?.settings) setIsTurnEnabled(d.settings.isTurnEntryEnabled);
-        });
-    };
-    checkSettings();
-    const pollId = setInterval(checkSettings, 3000);
-    return () => clearInterval(pollId);
+    setRange(getRange());
+    const unsubscribe = onSettingsSnapshot((settings) => {
+      setIsTurnEnabled(settings.isTurnEntryEnabled);
+    });
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {

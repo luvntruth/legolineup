@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { COLORS } from "@/lib/constants";
+import { getColorHex, parseRecordToSeconds } from "@/lib/utils";
+import { onSubmissionsSnapshot, onSettingsSnapshot, getRange } from "@/lib/db";
 
 interface Submission {
   id: number;
@@ -13,8 +15,9 @@ interface Submission {
 }
 
 export default function AdminPage() {
-  const [range, setRange] = useState<{ min: number; max: number }>({ min: 1, max: 100 });
+  const [range] = useState<{ min: number; max: number }>(getRange());
   const [rows, setRows] = useState<Submission[]>([]);
+  const [settings, setSettings] = useState<{ isTurnEntryEnabled: boolean }>({ isTurnEntryEnabled: false });
   const [status, setStatus] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("dashboard");
   const [isFullView, setIsFullView] = useState<boolean>(false);
@@ -26,20 +29,6 @@ export default function AdminPage() {
   const [recSec, setRecSec] = useState<number>(0);
   const [recStatus, setRecStatus] = useState<string>("");
 
-  const load = async () => {
-    try {
-      const res = await fetch(`/api/data?t=${Date.now()}`, { cache: "no-store" });
-      const data = await res.json();
-      setRange(data.range);
-      const submissions = data.submissions ?? [];
-      (submissions as any)._settings = data.settings;
-      setRows(submissions);
-      setStatus(new Date().toLocaleTimeString());
-    } catch (e) {
-      console.error("Failed to load data");
-    }
-  };
-
   const handleReset = async () => {
     if (!window.confirm("정말로 모든 데이터를 초기화하시겠습니까?\n이 작업은 되돌릴 수 없습니다.")) {
       return;
@@ -48,7 +37,6 @@ export default function AdminPage() {
       const res = await fetch("/api/reset", { method: "POST" });
       if (res.ok) {
         alert("데이터가 완전히 초기화되었습니다.");
-        load();
       } else {
         alert("초기화 실패");
       }
@@ -58,31 +46,25 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
-    load();
-    const id = setInterval(load, 5000);
-    return () => clearInterval(id);
+    const unsubSubmissions = onSubmissionsSnapshot((submissions) => {
+      setRows(submissions as Submission[]);
+      setStatus(new Date().toLocaleTimeString());
+    });
+    const unsubSettings = onSettingsSnapshot((s) => {
+      setSettings(s);
+    });
+    return () => {
+      unsubSubmissions();
+      unsubSettings();
+    };
   }, []);
 
-  const getColorHex = (c: string) => {
-    switch (c) {
-      case "빨": return "#FF3B30";
-      case "노": return "#FFCC00";
-      case "파": return "#007AFF";
-      case "초": return "#34C759";
-      case "흰": return "#F2F2F7";
-      default: return "#F2F2F7";
-    }
-  };
+  // getColorHex is now imported from @/lib/utils
 
   // Calculate stats (Insight data preparation)
   const validRows = rows.filter(r => r.record && r.tValue !== "");
   const sortedByRecord = [...validRows].sort((a, b) => {
-    const parse = (rec: string) => {
-      if (!rec) return Infinity;
-      const match = rec.match(/(\d+)'\s*(\d+)"/);
-      return match ? parseInt(match[1]) * 60 + parseInt(match[2]) : Infinity;
-    };
-    return parse(a.record) - parse(b.record);
+    return parseRecordToSeconds(a.record) - parseRecordToSeconds(b.record);
   });
 
   const handleRecordSubmit = async () => {
@@ -100,7 +82,6 @@ export default function AdminPage() {
       });
       if (res.ok) {
         setRecStatus("기록 저장 완료!");
-        load();
         setTimeout(() => setRecStatus(""), 3000);
       } else {
         const d = await res.json();
@@ -112,12 +93,7 @@ export default function AdminPage() {
   };
 
   // --- Insight Logic (Unified) ---
-  const parseRecordToSeconds = (record: string) => {
-    if (!record) return Infinity;
-    const match = record.match(/(\d+)'\s*(\d+)"/);
-    if (!match) return Infinity;
-    return parseInt(match[1]) * 60 + parseInt(match[2]);
-  };
+  // parseRecordToSeconds is now imported from @/lib/utils
 
   const top20Percent = sortedByRecord.slice(0, Math.ceil(validRows.length * 0.2) || 1);
   const insights = [];
@@ -224,15 +200,11 @@ export default function AdminPage() {
           <>
             {/* Actions */}
             <div className="flex flex-col md:flex-row gap-4">
-              <button
-                onClick={load}
-                className="btn-primary flex-1 py-5"
-              >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="animate-spin-slow">
-                  <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C14.8273 3 17.3752 4.30561 19 6.33333M21 3V7H17" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                <span className="text-xl">새로고침</span>
-              </button>
+              <div className="flex-1 py-5 px-6 rounded-[2rem] bg-green-50 border-2 border-green-200 flex items-center justify-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse"></div>
+                <span className="text-lg font-bold text-green-700">실시간 연결 중</span>
+                <span className="text-sm text-green-500">{status}</span>
+              </div>
 
               <button
                 onClick={handleReset}
@@ -247,16 +219,15 @@ export default function AdminPage() {
 
               <button
                 onClick={async () => {
-                  const currentStatus = (rows as any)._settings?.isTurnEntryEnabled || false;
+                  const currentStatus = settings.isTurnEntryEnabled || false;
                   await fetch("/api/settings", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ isTurnEntryEnabled: !currentStatus }),
                   });
-                  load();
                 }}
                 className={`px-6 py-5 font-bold rounded-[2rem] border-2 transition-colors flex-1 flex items-center justify-center gap-2 shadow-[0_8px_16px_rgba(0,0,0,0.05)]
-                  ${(rows as any)._settings?.isTurnEntryEnabled
+                  ${settings.isTurnEntryEnabled
                     ? "bg-green-500 border-green-500 text-white hover:bg-green-600"
                     : "bg-white border-[#E60012] text-[#E60012] hover:bg-red-50"
                   }`}
@@ -264,7 +235,7 @@ export default function AdminPage() {
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M13 2L3 14h9l-1 8L21 10h-9l1-8z" fill="currentColor" />
                 </svg>
-                <span className="text-xl">{(rows as any)._settings?.isTurnEntryEnabled ? "턴 수 중단" : "턴 수 활성화"}</span>
+                <span className="text-xl">{settings.isTurnEntryEnabled ? "턴 수 중단" : "턴 수 활성화"}</span>
               </button>
             </div>
 
@@ -300,7 +271,7 @@ export default function AdminPage() {
 
             {/* Helper to determine if Turn feature is active - show column if active */}
             {(() => {
-              const turnEnabled = (rows as any)._settings?.isTurnEntryEnabled || false;
+              const turnEnabled = settings.isTurnEntryEnabled || false;
 
               return (
                 <div className="card-premium overflow-hidden">
@@ -868,7 +839,7 @@ export default function AdminPage() {
 
           <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 pb-24">
             {(() => {
-              const turnEnabled = (rows as any)._settings?.isTurnEntryEnabled || false;
+              const turnEnabled = settings.isTurnEntryEnabled || false;
               let sortedList = rows.slice();
 
               if (sortOption === "latest") {

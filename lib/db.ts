@@ -1,7 +1,8 @@
-import { doc, setDoc, getDoc, collection, getDocs, query, orderBy, deleteDoc, runTransaction } from "firebase/firestore";
+import { doc, setDoc, getDoc, collection, getDocs, query, orderBy, deleteDoc, runTransaction, onSnapshot } from "firebase/firestore";
 import { db } from "./firebase";
 import { COLORS, T_VALUES } from "./constants";
 import { ID_MIN, ID_MAX } from "./config";
+import { parseRecordToSeconds } from "./utils";
 
 export type SubmissionRow = {
   id: number;
@@ -52,14 +53,6 @@ export async function upsertRecord(id: number, record: string) {
         
         newRecords = [...existingRecords, record];
         
-        // Calculate the fastest record amongst newRecords
-        const parseRecordToSeconds = (rec: string) => {
-            if (!rec) return Infinity;
-            const match = rec.match(/(\d+)'\s*(\d+)"/);
-            if (!match) return Infinity;
-            return parseInt(match[1]) * 60 + parseInt(match[2]);
-        };
-        
         bestRecord = newRecords.reduce((best, curr) => {
            return parseRecordToSeconds(curr) < parseRecordToSeconds(best) ? curr : best;
         });
@@ -89,33 +82,14 @@ export async function getSubmission(id: number) {
   const docRef = doc(db, "submissions", String(id));
   const snap = await getDoc(docRef);
   if (!snap.exists()) return null;
-  const data = snap.data();
-  return { 
-    id: data.id, 
-    colors: data.colors ? JSON.parse(data.colors) : null, 
-    tValue: data.t_value ?? "", 
-    record: data.record ?? "",
-    records: data.records ? JSON.parse(data.records) : (data.record ? [data.record] : []),
-    updatedAt: data.updated_at 
-  };
+  return parseSubmission(snap.data());
 }
 
 export async function getAllSubmissions() {
   const colRef = collection(db, "submissions");
   const q = query(colRef, orderBy("id", "asc"));
   const snap = await getDocs(q);
-  const rows: any[] = [];
-  snap.forEach(doc => {
-    rows.push(doc.data());
-  });
-  return rows.map(r => ({ 
-    id: r.id, 
-    colors: r.colors ? JSON.parse(r.colors) : null, 
-    tValue: r.t_value ?? "", 
-    record: r.record ?? "",
-    records: r.records ? JSON.parse(r.records) : (r.record ? [r.record] : []),
-    updatedAt: r.updated_at 
-  }));
+  return snap.docs.map(d => parseSubmission(d.data()));
 }
 
 export async function clearAllSubmissions() {
@@ -140,4 +114,35 @@ export async function updateSettings(isTurnEntryEnabled: boolean) {
 
 export function getRange() {
   return { min: ID_MIN, max: ID_MAX };
+}
+
+export function onSubmissionsSnapshot(callback: (submissions: ReturnType<typeof parseSubmission>[]) => void) {
+  const colRef = collection(db, "submissions");
+  const q = query(colRef, orderBy("id", "asc"));
+  return onSnapshot(q, (snap) => {
+    const rows = snap.docs.map(d => parseSubmission(d.data()));
+    callback(rows);
+  });
+}
+
+export function onSettingsSnapshot(callback: (settings: { isTurnEntryEnabled: boolean }) => void) {
+  const docRef = doc(db, "settings", "config");
+  return onSnapshot(docRef, (snap) => {
+    if (!snap.exists()) {
+      callback({ isTurnEntryEnabled: false });
+      return;
+    }
+    callback(snap.data() as { isTurnEntryEnabled: boolean });
+  });
+}
+
+function parseSubmission(r: any) {
+  return {
+    id: r.id,
+    colors: r.colors ? JSON.parse(r.colors) : null,
+    tValue: r.t_value ?? "",
+    record: r.record ?? "",
+    records: r.records ? JSON.parse(r.records) : (r.record ? [r.record] : []),
+    updatedAt: r.updated_at,
+  };
 }
