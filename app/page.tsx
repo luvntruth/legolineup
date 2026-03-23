@@ -40,13 +40,8 @@ export default function HomePage() {
           } else {
             setColors([]);
           }
-          setTValue(d.submission.tValue);
-
-          if (d.submission.tValue && d.submission.tValue !== "") {
-            setStep(4);
-          } else {
-            setStep(1);
-          }
+          setTValue(d.submission.tValue || "");
+          setStep(1);
         } else {
           setStep(1);
           setColors([]);
