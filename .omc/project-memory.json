@@ -1,0 +1,291 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1774185220305,
+  "projectRoot": "/Users/stonylee/workspace/legolineup",
+  "techStack": {
+    "languages": [
+      {
+        "name": "JavaScript/TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "package.json"
+        ]
+      },
+      {
+        "name": "TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "tsconfig.json"
+        ]
+      }
+    ],
+    "frameworks": [
+      {
+        "name": "next",
+        "version": "14.1.0",
+        "category": "fullstack"
+      },
+      {
+        "name": "react",
+        "version": "18.2.0",
+        "category": "frontend"
+      },
+      {
+        "name": "react-dom",
+        "version": "18.2.0",
+        "category": "frontend"
+      }
+    ],
+    "packageManager": "npm",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": "npm run build",
+    "testCommand": null,
+    "lintCommand": "npm run lint",
+    "devCommand": "npm run dev",
+    "scripts": {
+      "dev": "next dev",
+      "build": "next build",
+      "start": "next start",
+      "lint": "next lint"
+    }
+  },
+  "conventions": {
+    "namingStyle": "camelCase",
+    "importStyle": "ES modules",
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "app",
+      "components",
+      "lib",
+      "scripts"
+    ],
+    "gitBranches": {
+      "defaultBranch": "master",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "app": {
+      "path": "app",
+      "purpose": "Application code",
+      "fileCount": 3,
+      "lastAccessed": 1774185220296,
+      "keyFiles": [
+        "globals.css",
+        "layout.tsx",
+        "page.tsx"
+      ]
+    },
+    "components": {
+      "path": "components",
+      "purpose": "UI components",
+      "fileCount": 1,
+      "lastAccessed": 1774185220300,
+      "keyFiles": [
+        "SortableLegoItem.tsx"
+      ]
+    },
+    "data": {
+      "path": "data",
+      "purpose": "Data files",
+      "fileCount": 2,
+      "lastAccessed": 1774185220300,
+      "keyFiles": [
+        "db.sqlite",
+        "submissions.json"
+      ]
+    },
+    "lib": {
+      "path": "lib",
+      "purpose": "Library code",
+      "fileCount": 6,
+      "lastAccessed": 1774185220301,
+      "keyFiles": [
+        "config.ts",
+        "constants.ts",
+        "db.ts",
+        "firebase.ts",
+        "types.ts"
+      ]
+    },
+    "scripts": {
+      "path": "scripts",
+      "purpose": "Build/utility scripts",
+      "fileCount": 1,
+      "lastAccessed": 1774185220302,
+      "keyFiles": [
+        "mock-data.js"
+      ]
+    },
+    "app/api": {
+      "path": "app/api",
+      "purpose": "API routes",
+      "fileCount": 0,
+      "lastAccessed": 1774185220302,
+      "keyFiles": []
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "app/admin/page.tsx",
+      "accessCount": 43,
+      "lastAccessed": 1774251114921,
+      "type": "file"
+    },
+    {
+      "path": "app/page.tsx",
+      "accessCount": 17,
+      "lastAccessed": 1774251779504,
+      "type": "file"
+    },
+    {
+      "path": "lib/db.ts",
+      "accessCount": 9,
+      "lastAccessed": 1774187736574,
+      "type": "file"
+    },
+    {
+      "path": "",
+      "accessCount": 8,
+      "lastAccessed": 1774185370999,
+      "type": "directory"
+    },
+    {
+      "path": "components/SortableLegoItem.tsx",
+      "accessCount": 6,
+      "lastAccessed": 1774250267254,
+      "type": "file"
+    },
+    {
+      "path": "lib/utils.ts",
+      "accessCount": 6,
+      "lastAccessed": 1774250280264,
+      "type": "file"
+    },
+    {
+      "path": "lib/constants.ts",
+      "accessCount": 5,
+      "lastAccessed": 1774188778370,
+      "type": "file"
+    },
+    {
+      "path": "next.config.mjs",
+      "accessCount": 4,
+      "lastAccessed": 1774186176925,
+      "type": "file"
+    },
+    {
+      "path": "lib/firebase.ts",
+      "accessCount": 3,
+      "lastAccessed": 1774187745263,
+      "type": "file"
+    },
+    {
+      "path": "lib/types.ts",
+      "accessCount": 2,
+      "lastAccessed": 1774187733247,
+      "type": "file"
+    },
+    {
+      "path": "lib/config.ts",
+      "accessCount": 2,
+      "lastAccessed": 1774187733742,
+      "type": "file"
+    },
+    {
+      "path": "package.json",
+      "accessCount": 2,
+      "lastAccessed": 1774187733856,
+      "type": "file"
+    },
+    {
+      "path": "app/layout.tsx",
+      "accessCount": 2,
+      "lastAccessed": 1774187736248,
+      "type": "file"
+    },
+    {
+      "path": "app/api/submit/route.ts",
+      "accessCount": 2,
+      "lastAccessed": 1774187752337,
+      "type": "file"
+    },
+    {
+      "path": "app/api/record/route.ts",
+      "accessCount": 2,
+      "lastAccessed": 1774187752505,
+      "type": "file"
+    },
+    {
+      "path": "app/api/settings/route.ts",
+      "accessCount": 2,
+      "lastAccessed": 1774187756227,
+      "type": "file"
+    },
+    {
+      "path": "app/api/participant/route.ts",
+      "accessCount": 2,
+      "lastAccessed": 1774187756597,
+      "type": "file"
+    },
+    {
+      "path": "app/api/reset/route.ts",
+      "accessCount": 2,
+      "lastAccessed": 1774187756712,
+      "type": "file"
+    },
+    {
+      "path": ".bkit/state/pdca-status.json",
+      "accessCount": 1,
+      "lastAccessed": 1774185259451,
+      "type": "file"
+    },
+    {
+      "path": "tsconfig.json",
+      "accessCount": 1,
+      "lastAccessed": 1774185311021,
+      "type": "file"
+    },
+    {
+      "path": "app/globals.css",
+      "accessCount": 1,
+      "lastAccessed": 1774185317414,
+      "type": "file"
+    },
+    {
+      "path": "app/api/data/route.ts",
+      "accessCount": 1,
+      "lastAccessed": 1774185317931,
+      "type": "file"
+    },
+    {
+      "path": "scripts/mock-data.js",
+      "accessCount": 1,
+      "lastAccessed": 1774185323202,
+      "type": "file"
+    },
+    {
+      "path": "tailwind.config.ts",
+      "accessCount": 1,
+      "lastAccessed": 1774185323447,
+      "type": "file"
+    },
+    {
+      "path": "README.md",
+      "accessCount": 1,
+      "lastAccessed": 1774187759701,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

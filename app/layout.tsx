@@ -8,7 +8,7 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "The Play Company - Color & T Picker",
+  title: "theplaycompany - Color & T Picker",
   description: "색상 순서와 T값을 제출하는 폼",
 };
 

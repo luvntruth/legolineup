@@ -137,17 +137,8 @@ export default function HomePage() {
   return (
     <main className="min-h-screen bg-white pb-12 animate-fade-in font-plus-jakarta">
       {/* Header */}
-      <header className="px-6 py-4 flex items-center justify-between sticky top-0 bg-white/80 backdrop-blur-md z-30">
-        <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M19 12H5" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M12 19L5 12L12 5" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-        </div>
-        <div className="flex items-center gap-1">
-          <span className="text-[#E60012] font-black text-xl italic tracking-tighter">Lego Lineup</span>
-        </div>
-        <div className="w-10"></div>
+      <header className="px-6 py-4 flex items-center justify-center sticky top-0 bg-white/80 backdrop-blur-md z-30">
+        <span className="text-[#E60012] font-black text-xl italic tracking-tighter">Lego Lineup</span>
       </header>
 
       <div className="px-6 space-y-8 mt-4 max-w-lg mx-auto">
