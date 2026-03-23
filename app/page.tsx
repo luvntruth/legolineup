@@ -1,31 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { COLORS, T_VALUES, Color, TValue } from "@/lib/constants";
+import { COLORS, Color } from "@/lib/constants";
 import { onSettingsSnapshot } from "@/lib/db";
 import { getRange } from "@/lib/db";
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  MouseSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { SortableLegoItem } from "@/components/SortableLegoItem";
+import { getColorHex, getColorName } from "@/lib/utils";
 
 export default function HomePage() {
   const [id, setId] = useState<number | "">("");
   const [range, setRange] = useState<{ min: number; max: number }>({ min: 1, max: 100 });
-  const [colors, setColors] = useState<Color[]>([...COLORS]);
+  const [colors, setColors] = useState<Color[]>([]);
   const [tValue, setTValue] = useState<string>("");
   const [tParts, setTParts] = useState<{ a: number; b: number }>({ a: 2, b: 1 });
   const [status, setStatus] = useState<string>("");
@@ -43,7 +27,7 @@ export default function HomePage() {
   useEffect(() => {
     if (id === "") {
       setStep(1);
-      setColors([...COLORS]);
+      setColors([]);
       setTValue("");
       return;
     }
@@ -54,10 +38,10 @@ export default function HomePage() {
           if (d.submission.colors) {
             setColors(d.submission.colors);
           } else {
-            setColors([...COLORS]);
+            setColors([]);
           }
           setTValue(d.submission.tValue);
-          
+
           if (d.submission.tValue && d.submission.tValue !== "") {
             setStep(4);
           } else {
@@ -65,44 +49,39 @@ export default function HomePage() {
           }
         } else {
           setStep(1);
-          setColors([...COLORS]);
+          setColors([]);
           setTValue("");
         }
       })
       .catch(() => {
         setStep(1);
-        setColors([...COLORS]);
+        setColors([]);
         setTValue("");
       });
   }, [id]);
 
-  const sensors = useSensors(
-    useSensor(MouseSensor, {
-      activationConstraint: {
-        distance: 5,
-      },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 200,
-        tolerance: 5,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
+  // 색상 순차 선택: 아직 선택하지 않은 색상 중에서 탭하면 순서대로 추가
+  const availableColors = COLORS.filter((c) => !colors.includes(c));
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
+  const handleSelectColor = (color: Color) => {
+    if (colors.includes(color)) return;
+    setColors((prev) => [...prev, color]);
+  };
 
-    if (over && active.id !== over.id) {
-      setColors((items) => {
-        const oldIndex = items.indexOf(active.id as Color);
-        const newIndex = items.indexOf(over.id as Color);
-        return arrayMove(items, oldIndex, newIndex);
-      });
-    }
+  const handleUndoLastColor = () => {
+    setColors((prev) => prev.slice(0, -1));
+  };
+
+  const handleResetColors = () => {
+    setColors([]);
+  };
+
+  // 수정하기: step 2 또는 step 4에서 step 1로 돌아감
+  const handleEdit = () => {
+    setColors([]);
+    setTValue("");
+    setStatus("");
+    setStep(1);
   };
 
   const submitColors = async () => {
@@ -112,6 +91,10 @@ export default function HomePage() {
     }
     if (id < range.min || id > range.max) {
       setStatus(`ID는 ${range.min}~${range.max} 범위만 가능합니다.`);
+      return;
+    }
+    if (colors.length !== 5) {
+      setStatus("5개의 색상을 모두 선택해주세요.");
       return;
     }
     setStatus("제출 중...");
@@ -198,26 +181,100 @@ export default function HomePage() {
             <section>
               <div className="flex items-center justify-between mb-2">
                 <h2 className="text-lg font-bold text-[#1A1A1A]">색상 순서 선택</h2>
-                <span className="px-3 py-1 bg-red-50 text-[#E60012] text-[10px] font-bold rounded-full uppercase tracking-tighter">드래그하여 순서 변경</span>
+                <span className="px-3 py-1 bg-red-50 text-[#E60012] text-[10px] font-bold rounded-full uppercase tracking-tighter">
+                  {colors.length}/5 선택됨
+                </span>
               </div>
               <p className="text-sm text-[#666666] mb-4">
-                원하는 색상 블록을 <strong className="text-[#E60012] font-semibold">위아래로 길게 꾹 누른 상태로 드래그</strong>하여 순서를 변경해보세요!
+                원하는 색상을 <strong className="text-[#E60012] font-semibold">1번부터 5번까지 순서대로 탭</strong>하여 선택해주세요.
               </p>
-              
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                <SortableContext items={colors} strategy={verticalListSortingStrategy}>
-                  {colors.map((c, idx) => (
-                    <SortableLegoItem key={c} id={c} color={c} index={idx} />
-                  ))}
-                </SortableContext>
-              </DndContext>
+
+              {/* 선택된 순서 표시 */}
+              <div className="flex items-center gap-2 mb-4 min-h-[56px] p-3 bg-[#F8F9FA] rounded-2xl border border-[#EEEEEE]">
+                {colors.length === 0 ? (
+                  <span className="text-sm text-[#999999] font-medium w-full text-center">아래에서 색상을 선택하세요</span>
+                ) : (
+                  colors.map((c, idx) => (
+                    <div key={c} className="flex items-center gap-1">
+                      <span className="text-[10px] font-black text-[#999999]">{idx + 1}</span>
+                      <div
+                        className="w-10 h-10 rounded-full border-2 border-black/10 shadow-sm flex items-center justify-center"
+                        style={{ backgroundColor: getColorHex(c) }}
+                      >
+                        <span className={`text-xs font-black ${c === "흰" || c === "노" ? "text-black/60" : "text-white/80"}`}>
+                          {c}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* 선택 가능한 색상 버튼 */}
+              <div className="grid grid-cols-5 gap-2 mb-3">
+                {COLORS.map((c) => {
+                  const isSelected = colors.includes(c);
+                  const orderNum = isSelected ? colors.indexOf(c) + 1 : null;
+                  return (
+                    <button
+                      key={c}
+                      onClick={() => handleSelectColor(c)}
+                      disabled={isSelected}
+                      className={`
+                        relative flex flex-col items-center justify-center py-3 rounded-2xl border-2 transition-all duration-200
+                        ${isSelected
+                          ? "border-[#CCCCCC] opacity-30 cursor-not-allowed scale-95"
+                          : "border-[#EEEEEE] hover:border-[#E60012] hover:shadow-md active:scale-95 cursor-pointer"
+                        }
+                      `}
+                    >
+                      <div
+                        className="w-10 h-10 rounded-full shadow-[inset_0_-3px_6px_rgba(0,0,0,0.1),_0_3px_6px_rgba(0,0,0,0.1)] border border-black/5"
+                        style={{ backgroundColor: getColorHex(c) }}
+                      />
+                      <span className="text-[11px] font-bold text-[#666666] mt-1.5">{getColorName(c)}</span>
+                      {isSelected && (
+                        <div className="absolute -top-1.5 -right-1.5 w-6 h-6 bg-[#E60012] rounded-full flex items-center justify-center shadow-sm">
+                          <span className="text-[10px] font-black text-white">{orderNum}</span>
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* 되돌리기 / 초기화 버튼 */}
+              <div className="flex gap-2">
+                <button
+                  onClick={handleUndoLastColor}
+                  disabled={colors.length === 0}
+                  className={`flex-1 py-2.5 rounded-xl border-2 font-bold text-sm transition-all
+                    ${colors.length === 0
+                      ? "border-[#EEEEEE] text-[#CCCCCC] cursor-not-allowed"
+                      : "border-[#E60012] text-[#E60012] hover:bg-red-50 active:scale-[0.98]"
+                    }`}
+                >
+                  마지막 취소
+                </button>
+                <button
+                  onClick={handleResetColors}
+                  disabled={colors.length === 0}
+                  className={`flex-1 py-2.5 rounded-xl border-2 font-bold text-sm transition-all
+                    ${colors.length === 0
+                      ? "border-[#EEEEEE] text-[#CCCCCC] cursor-not-allowed"
+                      : "border-[#666666] text-[#666666] hover:bg-gray-50 active:scale-[0.98]"
+                    }`}
+                >
+                  전체 초기화
+                </button>
+              </div>
             </section>
 
             <section className="pt-4">
-              <button 
-                className={`btn-primary ${id === "" ? "opacity-50 grayscale pointer-events-none" : ""}`}
+              <button
+                className={`btn-primary ${(id === "" || colors.length !== 5) ? "opacity-50 grayscale pointer-events-none" : ""}`}
                 onClick={submitColors}
-                disabled={id === "" || status === "제출 중..."}
+                disabled={id === "" || colors.length !== 5 || status === "제출 중..."}
               >
                 {status === "제출 중..." ? (
                     <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
@@ -228,7 +285,7 @@ export default function HomePage() {
                     </svg>
                 )}
               </button>
-              
+
               {status && status !== "제출 중..." && (
                 <div className="mt-4 text-center p-4 rounded-2xl font-bold border animate-fade-in bg-red-50 border-red-100 text-[#E60012]">
                   {status}
@@ -246,17 +303,29 @@ export default function HomePage() {
                 <path d="M22 4L12 14.01l-3-3" stroke="#34C759" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>
-            
+
             <h1 className="text-[2rem] font-bold text-[#1A1A1A] leading-tight mb-4">제출 되었습니다!</h1>
-            
-            <div className="p-6 bg-[#F8F9FA] rounded-2xl border border-[#EEEEEE] mb-8">
+
+            <div className="p-6 bg-[#F8F9FA] rounded-2xl border border-[#EEEEEE] mb-4">
               <p className="text-[#666666] text-lg font-medium leading-relaxed">
                 현재 대기 상태입니다.<br/>
                 강사님의 안내가 있을 때까지 기다려 주세요.
               </p>
             </div>
 
-            <button 
+            {/* 제출 내역 미리보기 */}
+            <div className="p-4 bg-white rounded-2xl border border-[#EEEEEE] mb-4">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-[#666666] font-medium">팀 #{id}</span>
+                <div className="flex items-center gap-1">
+                  {colors.map((c, i) => (
+                    <div key={i} className="w-6 h-6 rounded-full border border-black/10" style={{ backgroundColor: getColorHex(c) }} />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <button
               className={`btn-primary ${!isTurnEnabled ? "opacity-50 grayscale cursor-not-allowed" : ""}`}
               onClick={() => {
                 if (isTurnEnabled) setStep(3);
@@ -274,6 +343,18 @@ export default function HomePage() {
                     <path d="M5 12h14M12 5l7 7-7 7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               )}
+            </button>
+
+            {/* 수정하기 버튼 */}
+            <button
+              onClick={handleEdit}
+              className="w-full py-4 rounded-2xl border-2 border-[#E60012] text-[#E60012] font-bold text-lg hover:bg-red-50 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              수정하기
             </button>
           </div>
         )}
@@ -327,7 +408,7 @@ export default function HomePage() {
             </section>
 
             <section className="pt-4">
-              <button 
+              <button
                 className="btn-primary"
                 onClick={submitTValue}
                 disabled={status === "제출 중..."}
@@ -342,7 +423,7 @@ export default function HomePage() {
                     </svg>
                 )}
               </button>
-              
+
               {status && status !== "제출 중..." && (
                 <div className="mt-4 text-center p-4 rounded-2xl font-bold border animate-fade-in bg-red-50 border-red-100 text-[#E60012]">
                   {status}
@@ -360,9 +441,9 @@ export default function HomePage() {
                 <path d="M22 4L12 14.01l-3-3" stroke="#34C759" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>
-            
+
             <h1 className="text-[2rem] font-bold text-[#1A1A1A] leading-tight mb-4">모든 제출이 완료되었습니다!</h1>
-            
+
             <div className="p-6 bg-[#F8F9FA] rounded-2xl border border-[#EEEEEE]">
               <p className="text-[#666666] text-lg font-medium leading-relaxed mb-4">
                 제출 내역
@@ -374,7 +455,12 @@ export default function HomePage() {
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-[#EEEEEE]">
                   <span className="text-[#666666]">색상 순서</span>
-                  <span>{colors?.join("") || "-"}</span>
+                  <div className="flex items-center gap-1.5">
+                    {colors.map((c, i) => (
+                      <div key={i} className="w-6 h-6 rounded-full border border-black/10" style={{ backgroundColor: getColorHex(c) }} />
+                    ))}
+                    <span className="ml-1 text-sm">{colors?.join("") || "-"}</span>
+                  </div>
                 </div>
                 <div className="flex justify-between items-center py-2">
                   <span className="text-[#666666]">턴 수</span>
@@ -382,6 +468,18 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
+
+            {/* 수정하기 버튼 */}
+            <button
+              onClick={handleEdit}
+              className="w-full py-4 rounded-2xl border-2 border-[#E60012] text-[#E60012] font-bold text-lg hover:bg-red-50 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              수정하기
+            </button>
           </div>
         )}
       </div>
