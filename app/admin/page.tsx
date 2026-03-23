@@ -761,7 +761,7 @@ export default function AdminPage() {
                       value={recMin}
                       onChange={(e) => setRecMin(Number(e.target.value))}
                     >
-                      {Array.from({ length: 15 }, (_, i) => (
+                      {Array.from({ length: 20 }, (_, i) => (
                         <option key={i + 1} value={i + 1}>{i + 1}분</option>
                       ))}
                     </select>

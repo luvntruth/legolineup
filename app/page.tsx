@@ -238,31 +238,18 @@ export default function HomePage() {
                 })}
               </div>
 
-              {/* 되돌리기 / 초기화 버튼 */}
-              <div className="flex gap-2">
-                <button
-                  onClick={handleUndoLastColor}
-                  disabled={colors.length === 0}
-                  className={`flex-1 py-2.5 rounded-xl border-2 font-bold text-sm transition-all
-                    ${colors.length === 0
-                      ? "border-[#EEEEEE] text-[#CCCCCC] cursor-not-allowed"
-                      : "border-[#E60012] text-[#E60012] hover:bg-red-50 active:scale-[0.98]"
-                    }`}
-                >
-                  마지막 취소
-                </button>
-                <button
-                  onClick={handleResetColors}
-                  disabled={colors.length === 0}
-                  className={`flex-1 py-2.5 rounded-xl border-2 font-bold text-sm transition-all
-                    ${colors.length === 0
-                      ? "border-[#EEEEEE] text-[#CCCCCC] cursor-not-allowed"
-                      : "border-[#666666] text-[#666666] hover:bg-gray-50 active:scale-[0.98]"
-                    }`}
-                >
-                  전체 초기화
-                </button>
-              </div>
+              {/* 초기화 버튼 */}
+              <button
+                onClick={handleResetColors}
+                disabled={colors.length === 0}
+                className={`w-full py-2.5 rounded-xl border-2 font-bold text-sm transition-all
+                  ${colors.length === 0
+                    ? "border-[#EEEEEE] text-[#CCCCCC] cursor-not-allowed"
+                    : "border-[#666666] text-[#666666] hover:bg-gray-50 active:scale-[0.98]"
+                  }`}
+              >
+                전체 초기화
+              </button>
             </section>
 
             <section className="pt-4">
