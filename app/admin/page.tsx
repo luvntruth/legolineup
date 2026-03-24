@@ -26,6 +26,12 @@ export default function AdminPage() {
   const [showResetModal, setShowResetModal] = useState<boolean>(false);
   const [resetConfirmText, setResetConfirmText] = useState<string>("");
 
+  // Submission Edit State
+  const [editingSubmission, setEditingSubmission] = useState<{ id: number; colors: string[]; tValue: string } | null>(null);
+  const [editSubmColors, setEditSubmColors] = useState<string[]>([]);
+  const [editSubmTValue, setEditSubmTValue] = useState<string>("");
+  const [editSubmStatus, setEditSubmStatus] = useState<string>("");
+
   // Recorder State
   const [recTeamId, setRecTeamId] = useState<number | "">("");
   const [recMin, setRecMin] = useState<number>(1);
@@ -37,6 +43,46 @@ export default function AdminPage() {
   const [editMin, setEditMin] = useState<number>(1);
   const [editSec, setEditSec] = useState<number>(0);
   const [editStatus, setEditStatus] = useState<string>("");
+
+  const openSubmissionEdit = (r: { id: number; colors?: string[] | null; tValue: string }) => {
+    setEditingSubmission({ id: r.id, colors: r.colors ?? [], tValue: r.tValue });
+    setEditSubmColors(r.colors ?? []);
+    setEditSubmTValue(r.tValue);
+    setEditSubmStatus("");
+  };
+
+  const toggleEditColor = (color: string) => {
+    setEditSubmColors(prev => {
+      if (prev.includes(color)) return prev.filter(c => c !== color);
+      if (prev.length >= 5) return prev;
+      return [...prev, color];
+    });
+  };
+
+  const handleSubmissionSave = async () => {
+    if (!editingSubmission) return;
+    if (editSubmColors.length !== 5) {
+      setEditSubmStatus("색상 5개를 모두 선택해주세요.");
+      return;
+    }
+    setEditSubmStatus("저장 중...");
+    try {
+      const res = await fetch("/api/submission", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: editingSubmission.id, colors: editSubmColors, tValue: editSubmTValue }),
+      });
+      if (res.ok) {
+        setEditingSubmission(null);
+        setEditSubmStatus("");
+      } else {
+        const d = await res.json();
+        setEditSubmStatus(d.error ?? "저장 실패");
+      }
+    } catch {
+      setEditSubmStatus("네트워크 오류");
+    }
+  };
 
   const handleReset = async () => {
     try {
@@ -361,6 +407,7 @@ export default function AdminPage() {
                           <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest text-center">기록 (최다 3개)</th>
                           <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest text-center">색상 순서</th>
                           {turnEnabled && <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest text-right">턴 수</th>}
+                          <th className="px-6 py-4 text-[10px] font-black text-[#999999] uppercase tracking-widest text-center">수정</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#EEEEEE]">
@@ -423,12 +470,20 @@ export default function AdminPage() {
                                     )}
                                   </td>
                                 )}
+                                <td className="px-4 py-5 text-center">
+                                  <button
+                                    onClick={() => openSubmissionEdit(r)}
+                                    className="px-3 py-1.5 text-xs font-bold text-blue-600 bg-blue-50 border border-blue-100 rounded-lg hover:bg-blue-100 transition-colors"
+                                  >
+                                    수정
+                                  </button>
+                                </td>
                               </tr>
                             );
                           })
                         ) : (
                           <tr>
-                            <td colSpan={turnEnabled ? 4 : 3} className="px-6 py-20 text-center text-[#999999] font-medium italic">
+                            <td colSpan={turnEnabled ? 5 : 4} className="px-6 py-20 text-center text-[#999999] font-medium italic">
                               제출된 데이터가 없습니다.
                             </td>
                           </tr>
@@ -1291,6 +1346,79 @@ export default function AdminPage() {
         </button>
       </nav>
     </main>
+
+    {/* 제출 데이터 수정 모달 */}
+    {editingSubmission && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-6">
+        <div className="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl flex flex-col gap-5">
+          <h2 className="text-xl font-black text-[#1A1A1A]">팀 #{editingSubmission.id} 수정</h2>
+
+          {/* 색상 순서 */}
+          <div className="flex flex-col gap-3">
+            <p className="text-sm font-bold text-gray-700">색상 순서 <span className="text-xs text-gray-400 font-normal">(순서대로 클릭)</span></p>
+            {/* 선택된 순서 표시 */}
+            <div className="flex gap-2 justify-center">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="w-9 h-9 rounded-full border-2 border-dashed border-gray-200 flex items-center justify-center text-xs font-bold text-gray-400"
+                  style={editSubmColors[i] ? { backgroundColor: getColorHex(editSubmColors[i]), border: "none" } : {}}>
+                  {editSubmColors[i] ? "" : i + 1}
+                </div>
+              ))}
+            </div>
+            {/* 색상 버튼 */}
+            <div className="flex gap-2 justify-center">
+              {(["빨", "노", "파", "초", "흰"] as const).map((color) => {
+                const selected = editSubmColors.includes(color);
+                const idx = editSubmColors.indexOf(color);
+                return (
+                  <button key={color} onClick={() => toggleEditColor(color)}
+                    className={`relative w-10 h-10 rounded-full border-2 transition-all ${selected ? "border-gray-800 scale-110" : "border-gray-200 opacity-50"}`}
+                    style={{ backgroundColor: getColorHex(color) }}>
+                    {selected && (
+                      <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-gray-800 text-white rounded-full text-[9px] flex items-center justify-center font-bold">
+                        {idx + 1}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            {editSubmColors.length > 0 && (
+              <button onClick={() => setEditSubmColors([])}
+                className="text-xs text-gray-400 underline self-center">초기화</button>
+            )}
+          </div>
+
+          {/* 턴 수 */}
+          <div className="flex flex-col gap-2">
+            <p className="text-sm font-bold text-gray-700">턴 수</p>
+            <select value={editSubmTValue} onChange={(e) => setEditSubmTValue(e.target.value)}
+              className="border-2 border-gray-200 rounded-xl px-4 py-2.5 text-base focus:outline-none focus:border-[#E60012] transition-colors">
+              <option value="">미입력</option>
+              {(["2T+1","2T+2","2T+3","2T+4","3T+1","3T+2","3T+3","3T+4","4T+1","4T+2","4T+3","4T+4","5T+1","5T+2","5T+3","5T+4"] as const).map(v => (
+                <option key={v} value={v}>{v}</option>
+              ))}
+            </select>
+          </div>
+
+          {editSubmStatus && editSubmStatus !== "저장 중..." && (
+            <p className="text-xs text-[#E60012] font-bold text-center">{editSubmStatus}</p>
+          )}
+
+          <div className="flex gap-3">
+            <button onClick={() => setEditingSubmission(null)}
+              className="flex-1 py-3 rounded-2xl border-2 border-gray-200 text-gray-600 font-bold hover:bg-gray-50 transition-colors">
+              취소
+            </button>
+            <button onClick={handleSubmissionSave}
+              disabled={editSubmStatus === "저장 중..." || editSubmColors.length !== 5}
+              className="flex-1 py-3 rounded-2xl font-bold transition-colors bg-[#1A1A1A] text-white hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed">
+              {editSubmStatus === "저장 중..." ? "저장 중..." : "저장"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
 
     {/* 데이터 초기화 확인 모달 */}
     {showResetModal && (

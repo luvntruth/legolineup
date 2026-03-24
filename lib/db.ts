@@ -112,6 +112,81 @@ export async function updateSettings(isTurnEntryEnabled: boolean) {
   return { isTurnEntryEnabled };
 }
 
+export async function deleteRecord(id: number, recordIndex: number) {
+  if (id < ID_MIN || id > ID_MAX) throw new Error("ID out of range");
+  const docRef = doc(db, "submissions", String(id));
+
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(docRef);
+    if (!snap.exists()) throw new Error("팀 기록을 찾을 수 없습니다.");
+
+    const data = snap.data();
+    const existing: string[] = data.records ? JSON.parse(data.records) : (data.record ? [data.record] : []);
+
+    if (recordIndex < 0 || recordIndex >= existing.length) {
+      throw new Error("유효하지 않은 기록 인덱스입니다.");
+    }
+
+    const newRecords = existing.filter((_, i) => i !== recordIndex);
+    const bestRecord = newRecords.length > 0
+      ? newRecords.reduce((best, curr) => parseRecordToSeconds(curr) < parseRecordToSeconds(best) ? curr : best)
+      : "";
+
+    transaction.set(docRef, {
+      record: bestRecord,
+      records: JSON.stringify(newRecords),
+      updated_at: new Date().toISOString(),
+    }, { merge: true });
+  });
+}
+
+export async function updateRecord(id: number, recordIndex: number, newRecord: string) {
+  if (id < ID_MIN || id > ID_MAX) throw new Error("ID out of range");
+  const docRef = doc(db, "submissions", String(id));
+
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(docRef);
+    if (!snap.exists()) throw new Error("팀 기록을 찾을 수 없습니다.");
+
+    const data = snap.data();
+    const existing: string[] = data.records ? JSON.parse(data.records) : (data.record ? [data.record] : []);
+
+    if (recordIndex < 0 || recordIndex >= existing.length) {
+      throw new Error("유효하지 않은 기록 인덱스입니다.");
+    }
+
+    const newRecords = existing.map((r, i) => (i === recordIndex ? newRecord : r));
+    const bestRecord = newRecords.reduce((best, curr) =>
+      parseRecordToSeconds(curr) < parseRecordToSeconds(best) ? curr : best
+    );
+
+    transaction.set(docRef, {
+      record: bestRecord,
+      records: JSON.stringify(newRecords),
+      updated_at: new Date().toISOString(),
+    }, { merge: true });
+  });
+}
+
+export async function updateSubmissionData(id: number, colors?: string[], tValue?: string) {
+  if (id < ID_MIN || id > ID_MAX) throw new Error("ID out of range");
+  if (colors !== undefined) {
+    if (colors.length !== 5 || !colors.every((c: any) => COLORS.includes(c as any))) {
+      throw new Error("Invalid colors");
+    }
+  }
+  if (tValue !== undefined && tValue !== "" && !/^\d+T\+\d+$/.test(tValue)) {
+    throw new Error("Invalid tValue format");
+  }
+  const now = new Date().toISOString();
+  const docRef = doc(db, "submissions", String(id));
+  const updates: Record<string, any> = { updated_at: now };
+  if (colors !== undefined) updates.colors = JSON.stringify(colors);
+  if (tValue !== undefined) updates.t_value = tValue;
+  await setDoc(docRef, updates, { merge: true });
+  return { id, updatedAt: now };
+}
+
 export function getRange() {
   return { min: ID_MIN, max: ID_MAX };
 }
