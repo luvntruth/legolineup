@@ -23,6 +23,8 @@ export default function AdminPage() {
   const [isFullView, setIsFullView] = useState<boolean>(false);
   const [sortOption, setSortOption] = useState<string>("latest"); // new state for sorting
   const [showAnalysis, setShowAnalysis] = useState<boolean>(false);
+  const [showResetModal, setShowResetModal] = useState<boolean>(false);
+  const [resetConfirmText, setResetConfirmText] = useState<string>("");
 
   // Recorder State
   const [recTeamId, setRecTeamId] = useState<number | "">("");
@@ -30,19 +32,25 @@ export default function AdminPage() {
   const [recSec, setRecSec] = useState<number>(0);
   const [recStatus, setRecStatus] = useState<string>("");
 
+  // Edit State
+  const [editingRecord, setEditingRecord] = useState<{ teamId: number; index: number } | null>(null);
+  const [editMin, setEditMin] = useState<number>(1);
+  const [editSec, setEditSec] = useState<number>(0);
+  const [editStatus, setEditStatus] = useState<string>("");
+
   const handleReset = async () => {
-    if (!window.confirm("정말로 모든 데이터를 초기화하시겠습니까?\n이 작업은 되돌릴 수 없습니다.")) {
-      return;
-    }
     try {
       const res = await fetch("/api/reset", { method: "POST" });
       if (res.ok) {
-        alert("데이터가 완전히 초기화되었습니다.");
+        setShowResetModal(false);
+        setResetConfirmText("");
+        setStatus("데이터가 초기화되었습니다.");
+        setTimeout(() => setStatus(""), 3000);
       } else {
-        alert("초기화 실패");
+        setStatus("초기화 실패");
       }
     } catch (e) {
-      alert("네트워크 오류");
+      setStatus("네트워크 오류");
     }
   };
 
@@ -90,6 +98,56 @@ export default function AdminPage() {
       }
     } catch (e) {
       setRecStatus("네트워크 오류");
+    }
+  };
+
+  const handleDeleteRecord = async (teamId: number, recordIndex: number) => {
+    if (!window.confirm(`팀 #${teamId}의 기록 ${recordIndex + 1}번을 삭제하시겠습니까?`)) return;
+    try {
+      const res = await fetch("/api/record", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: teamId, recordIndex }),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        alert(d.error || "삭제 실패");
+      }
+    } catch {
+      alert("네트워크 오류");
+    }
+  };
+
+  const startEditRecord = (teamId: number, index: number, recordStr: string) => {
+    // Parse "M' SS\"" format
+    const m = recordStr.match(/(\d+)'\s*(\d+)"/);
+    if (m) {
+      setEditMin(parseInt(m[1]));
+      setEditSec(parseInt(m[2]));
+    }
+    setEditingRecord({ teamId, index });
+    setEditStatus("");
+  };
+
+  const handleEditSave = async () => {
+    if (!editingRecord) return;
+    const recordStr = `${editMin}' ${String(editSec).padStart(2, '0')}"`;
+    setEditStatus("저장 중...");
+    try {
+      const res = await fetch("/api/record", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: editingRecord.teamId, recordIndex: editingRecord.index, record: recordStr }),
+      });
+      if (res.ok) {
+        setEditingRecord(null);
+        setEditStatus("");
+      } else {
+        const d = await res.json();
+        setEditStatus(d.error || "수정 실패");
+      }
+    } catch {
+      setEditStatus("네트워크 오류");
     }
   };
 
@@ -176,6 +234,7 @@ export default function AdminPage() {
   const maxTBaseAvg = tBaseSorted.length > 0 ? Math.max(...tBaseSorted.map(([_, v]) => v.avgSec)) : 1;
 
   return (
+    <>
     <main className="min-h-screen bg-[#F8F9FA] pb-24 font-plus-jakarta animate-fade-in">
       {/* Header */}
       <header className="px-6 py-6 border-b border-[#EEEEEE] bg-white flex items-center justify-between sticky top-0 z-30">
@@ -192,7 +251,7 @@ export default function AdminPage() {
         </div>
         <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 rounded-full border border-green-100">
           <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-          <span className="text-[10px] font-bold text-green-600 uppercase tracking-tight">라이브: 5초 후 자동 새로고침</span>
+          <span className="text-[10px] font-bold text-green-600 uppercase tracking-tight">실시간 연결 중</span>
         </div>
       </header>
 
@@ -208,7 +267,7 @@ export default function AdminPage() {
               </div>
 
               <button
-                onClick={handleReset}
+                onClick={() => { setShowResetModal(true); setResetConfirmText(""); }}
                 className="px-6 py-5 bg-white text-[#E60012] font-bold rounded-[2rem] border-2 border-[#E60012] flex items-center justify-center gap-2 hover:bg-red-50 transition-colors flex-1 shadow-[0_8px_16px_rgba(230,0,18,0.05)]"
                 title="데이터 초기화"
               >
@@ -221,6 +280,8 @@ export default function AdminPage() {
               <button
                 onClick={async () => {
                   const currentStatus = settings.isTurnEntryEnabled || false;
+                  const action = currentStatus ? "중단" : "활성화";
+                  if (!window.confirm(`턴 수 입력을 ${action}하시겠습니까?\n모든 참가자 화면에 즉시 적용됩니다.`)) return;
                   await fetch("/api/settings", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -809,17 +870,164 @@ export default function AdminPage() {
               </div>
             </section>
 
+            {/* Selected team's records management */}
+            {recTeamId !== "" && (() => {
+              const teamRow = rows.find(r => r.id === recTeamId);
+              const teamRecords = teamRow?.records && teamRow.records.length > 0
+                ? teamRow.records
+                : (teamRow?.record ? [teamRow.record] : []);
+              return (
+                <section className="card-premium overflow-hidden">
+                  <div className="px-6 py-4 border-b border-[#EEEEEE] bg-white">
+                    <h3 className="text-sm font-bold text-[#1A1A1A]">팀 #{recTeamId} 기록 관리</h3>
+                    <p className="text-xs text-[#999999] mt-0.5">{teamRecords.length}/3 기록 입력됨</p>
+                  </div>
+                  <div className="divide-y divide-[#EEEEEE]">
+                    {teamRecords.length === 0 ? (
+                      <div className="px-6 py-5 text-sm text-[#999999] italic text-center">아직 입력된 기록이 없습니다.</div>
+                    ) : teamRecords.map((rec, idx) => {
+                      const isEditing = editingRecord?.teamId === recTeamId && editingRecord?.index === idx;
+                      return (
+                        <div key={idx} className="px-5 py-4 bg-white space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-black text-[#999999] uppercase tracking-widest">기록 {idx + 1}</span>
+                            {!isEditing && (
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => startEditRecord(recTeamId as number, idx, rec)}
+                                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-blue-600 bg-blue-50 border border-blue-100 rounded-lg hover:bg-blue-100 transition-colors"
+                                >
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                  수정
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteRecord(recTeamId as number, idx)}
+                                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-[#E60012] bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 transition-colors"
+                                >
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                  삭제
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                          {isEditing ? (
+                            <div className="space-y-3">
+                              <div className="grid grid-cols-2 gap-3">
+                                <select
+                                  className="input-premium text-center text-lg font-bold appearance-none bg-white"
+                                  value={editMin}
+                                  onChange={(e) => setEditMin(Number(e.target.value))}
+                                >
+                                  {Array.from({ length: 20 }, (_, i) => (
+                                    <option key={i + 1} value={i + 1}>{i + 1}분</option>
+                                  ))}
+                                </select>
+                                <select
+                                  className="input-premium text-center text-lg font-bold appearance-none bg-white"
+                                  value={editSec}
+                                  onChange={(e) => setEditSec(Number(e.target.value))}
+                                >
+                                  {Array.from({ length: 60 }, (_, i) => (
+                                    <option key={i} value={i}>{String(i).padStart(2, '0')}초</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={handleEditSave}
+                                  disabled={editStatus === "저장 중..."}
+                                  className="flex-1 py-2.5 bg-[#E60012] text-white text-sm font-bold rounded-xl hover:bg-red-700 disabled:opacity-50 transition-colors"
+                                >
+                                  {editStatus === "저장 중..." ? "저장 중..." : "저장"}
+                                </button>
+                                <button
+                                  onClick={() => { setEditingRecord(null); setEditStatus(""); }}
+                                  className="flex-1 py-2.5 bg-[#F8F9FA] text-[#666666] text-sm font-bold rounded-xl hover:bg-gray-200 transition-colors"
+                                >
+                                  취소
+                                </button>
+                              </div>
+                              {editStatus && editStatus !== "저장 중..." && (
+                                <p className="text-xs text-[#E60012] text-center font-bold">{editStatus}</p>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-xl font-black text-[#E60012] tabular-nums">{rec}</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              );
+            })()}
+
             <section className="card-premium overflow-hidden">
               <div className="px-6 py-4 border-b border-[#EEEEEE] bg-white">
                 <h3 className="text-sm font-bold text-[#1A1A1A]">최근 입력 기록</h3>
               </div>
               <div className="divide-y divide-[#EEEEEE]">
-                {rows.slice().sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, 5).map(r => (
-                  <div key={r.id} className="px-6 py-4 flex items-center justify-between bg-white text-sm">
-                    <span className="font-bold">#{r.id}팀</span>
-                    <span className="font-black text-[#E60012]">{r.record || "-"}</span>
-                  </div>
-                ))}
+                {rows.slice().sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, 5).map(r => {
+                  const recentRecords = r.records && r.records.length > 0 ? r.records : (r.record ? [r.record] : []);
+                  return (
+                    <div key={r.id} className="px-5 py-4 bg-white space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-sm">#{r.id}팀</span>
+                        <span className="text-xs text-[#999999]">{recentRecords.length}/3</span>
+                      </div>
+                      {recentRecords.map((rec, idx) => {
+                        const isEditing = editingRecord?.teamId === r.id && editingRecord?.index === idx;
+                        return (
+                          <div key={idx} className="space-y-2">
+                            {isEditing ? (
+                              <div className="space-y-2">
+                                <div className="grid grid-cols-2 gap-2">
+                                  <select
+                                    className="input-premium text-center text-base font-bold appearance-none bg-white py-2"
+                                    value={editMin}
+                                    onChange={(e) => setEditMin(Number(e.target.value))}
+                                  >
+                                    {Array.from({ length: 20 }, (_, i) => (
+                                      <option key={i + 1} value={i + 1}>{i + 1}분</option>
+                                    ))}
+                                  </select>
+                                  <select
+                                    className="input-premium text-center text-base font-bold appearance-none bg-white py-2"
+                                    value={editSec}
+                                    onChange={(e) => setEditSec(Number(e.target.value))}
+                                  >
+                                    {Array.from({ length: 60 }, (_, i) => (
+                                      <option key={i} value={i}>{String(i).padStart(2, '0')}초</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div className="flex gap-2">
+                                  <button onClick={handleEditSave} disabled={editStatus === "저장 중..."} className="flex-1 py-2 bg-[#E60012] text-white text-xs font-bold rounded-lg disabled:opacity-50">
+                                    {editStatus === "저장 중..." ? "..." : "저장"}
+                                  </button>
+                                  <button onClick={() => { setEditingRecord(null); setEditStatus(""); }} className="flex-1 py-2 bg-[#F8F9FA] text-[#666666] text-xs font-bold rounded-lg">취소</button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-between">
+                                <span className="font-black text-[#E60012] tabular-nums">{rec}</span>
+                                <div className="flex gap-1.5">
+                                  <button onClick={() => startEditRecord(r.id, idx, rec)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                  </button>
+                                  <button onClick={() => handleDeleteRecord(r.id, idx)} className="p-1.5 text-[#E60012] hover:bg-red-50 rounded-lg transition-colors">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                      {recentRecords.length === 0 && <span className="text-xs text-[#CCCCCC] italic">기록 없음</span>}
+                    </div>
+                  );
+                })}
               </div>
             </section>
           </div>
@@ -1083,5 +1291,49 @@ export default function AdminPage() {
         </button>
       </nav>
     </main>
+
+    {/* 데이터 초기화 확인 모달 */}
+    {showResetModal && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-6">
+        <div className="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl flex flex-col gap-5">
+          <div className="flex flex-col gap-2">
+            <h2 className="text-xl font-black text-[#E60012]">데이터 초기화</h2>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              모든 팀의 제출 데이터가 <strong>완전히 삭제</strong>됩니다.<br />
+              이 작업은 되돌릴 수 없습니다.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-bold text-gray-700">
+              계속하려면 아래에 <span className="text-[#E60012] font-black">초기화</span> 를 입력하세요
+            </label>
+            <input
+              type="text"
+              value={resetConfirmText}
+              onChange={(e) => setResetConfirmText(e.target.value)}
+              placeholder="초기화"
+              className="border-2 border-gray-200 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-[#E60012] transition-colors"
+              autoFocus
+            />
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={() => { setShowResetModal(false); setResetConfirmText(""); }}
+              className="flex-1 py-3 rounded-2xl border-2 border-gray-200 text-gray-600 font-bold hover:bg-gray-50 transition-colors"
+            >
+              취소
+            </button>
+            <button
+              onClick={handleReset}
+              disabled={resetConfirmText !== "초기화"}
+              className="flex-1 py-3 rounded-2xl font-bold transition-colors disabled:opacity-30 disabled:cursor-not-allowed bg-[#E60012] text-white hover:bg-red-700"
+            >
+              초기화
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
