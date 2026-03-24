@@ -25,6 +25,7 @@ export default function AdminPage() {
   const [showAnalysis, setShowAnalysis] = useState<boolean>(false);
   const [showResetModal, setShowResetModal] = useState<boolean>(false);
   const [resetConfirmText, setResetConfirmText] = useState<string>("");
+  const [fullViewPage, setFullViewPage] = useState<number>(1);
 
   // Submission Edit State
   const [editingSubmission, setEditingSubmission] = useState<{ id: number; colors: string[]; tValue: string } | null>(null);
@@ -387,7 +388,7 @@ export default function AdminPage() {
                     <h2 className="text-lg font-bold text-[#1A1A1A]">실시간 데이터 내역</h2>
                     <button
                       className="text-[#E60012] font-bold text-sm flex items-center gap-1 hover:underline cursor-pointer"
-                      onClick={() => setIsFullView(true)}
+                      onClick={() => { setIsFullView(true); setFullViewPage(1); }}
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M15 3H21V9" stroke="#E60012" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -1097,7 +1098,7 @@ export default function AdminPage() {
             <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
               <select
                 value={sortOption}
-                onChange={(e) => setSortOption(e.target.value)}
+                onChange={(e) => { setSortOption(e.target.value); setFullViewPage(1); }}
                 className="input-premium py-2 px-4 shadow-none bg-[#F8F9FA] border border-[#EEEEEE] text-sm font-bold text-[#1A1A1A] max-w-[200px]"
               >
                 <option value="latest">최신 등록순</option>
@@ -1135,7 +1136,12 @@ export default function AdminPage() {
                 });
               }
 
+              const PAGE_SIZE = 50;
+              const totalPages = Math.max(1, Math.ceil(sortedList.length / PAGE_SIZE));
+              const pagedList = sortedList.slice((fullViewPage - 1) * PAGE_SIZE, fullViewPage * PAGE_SIZE);
+
               return (
+                <>
                 <div className="card-premium overflow-hidden">
                   <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left">
@@ -1148,8 +1154,8 @@ export default function AdminPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#EEEEEE]">
-                        {sortedList.length > 0 ? (
-                          sortedList.map((r) => {
+                        {pagedList.length > 0 ? (
+                          pagedList.map((r) => {
                             const recordsToDisplay = r.records && r.records.length > 0 ? r.records : (r.record ? [r.record] : []);
                             let bestRecIndex = 0;
                             let bestSec = Infinity;
@@ -1222,8 +1228,8 @@ export default function AdminPage() {
 
                   {/* Mobile Card List for Full View */}
                   <div className="md:hidden divide-y divide-[#EEEEEE]">
-                    {sortedList.length > 0 ? (
-                      sortedList.map((r) => {
+                    {pagedList.length > 0 ? (
+                      pagedList.map((r) => {
                         const recordsToDisplay = r.records && r.records.length > 0 ? r.records : (r.record ? [r.record] : []);
                         let bestRecIndex = 0;
                         let bestSec = Infinity;
@@ -1300,6 +1306,31 @@ export default function AdminPage() {
                     )}
                   </div>
                 </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-6 pb-2">
+                  <button
+                    onClick={() => setFullViewPage(p => Math.max(1, p - 1))}
+                    disabled={fullViewPage === 1}
+                    className="w-9 h-9 flex items-center justify-center rounded-full bg-[#F8F9FA] border border-[#EEEEEE] text-[#1A1A1A] disabled:opacity-30 hover:bg-gray-100 transition-colors"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </button>
+                  <span className="text-sm font-bold text-[#1A1A1A] px-2">
+                    {fullViewPage} / {totalPages}
+                    <span className="text-[#999999] font-normal ml-2">({sortedList.length}건)</span>
+                  </span>
+                  <button
+                    onClick={() => setFullViewPage(p => Math.min(totalPages, p + 1))}
+                    disabled={fullViewPage === totalPages}
+                    className="w-9 h-9 flex items-center justify-center rounded-full bg-[#F8F9FA] border border-[#EEEEEE] text-[#1A1A1A] disabled:opacity-30 hover:bg-gray-100 transition-colors"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </button>
+                </div>
+              )}
+                </>
               );
             })()}
           </div>
