@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { COLORS, Color } from "@/lib/constants";
 import { onSettingsSnapshot } from "@/lib/db";
 import { getRange } from "@/lib/db";
@@ -13,8 +13,17 @@ export default function HomePage() {
   const [tValue, setTValue] = useState<string>("");
   const [tParts, setTParts] = useState<{ a: number; b: number }>({ a: 2, b: 1 });
   const [status, setStatus] = useState<string>("");
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [isTurnEnabled, setIsTurnEnabled] = useState<boolean>(false);
+
+  // 기록 측정 입력 상태 (스탑워치)
+  const [elapsedMs, setElapsedMs] = useState<number>(0);
+  const [isRunning, setIsRunning] = useState<boolean>(false);
+  const [hasStopped, setHasStopped] = useState<boolean>(false);
+  const [recStatus, setRecStatus] = useState<string>("");
+  const [recordValue, setRecordValue] = useState<string>("");
+  const startTimestampRef = useRef<number>(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     setRange(getRange());
@@ -29,6 +38,7 @@ export default function HomePage() {
       setStep(1);
       setColors([]);
       setTValue("");
+      setRecordValue("");
       return;
     }
     fetch(`/api/participant?id=${id}&t=${Date.now()}`, { cache: "no-store" })
@@ -71,12 +81,97 @@ export default function HomePage() {
     setColors([]);
   };
 
-  // 수정하기: step 2 또는 step 4에서 step 1로 돌아감
+  // 수정하기: 색상/턴 수만 다시 입력 (기록 측정 단계는 유지)
   const handleEdit = () => {
     setColors([]);
     setTValue("");
     setStatus("");
-    setStep(1);
+    setStep(2);
+  };
+
+  // 스탑워치 정리
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, []);
+
+  const startStopwatch = () => {
+    if (isRunning) return;
+    startTimestampRef.current = Date.now() - elapsedMs;
+    setIsRunning(true);
+    setHasStopped(false);
+    setRecStatus("");
+    intervalRef.current = setInterval(() => {
+      setElapsedMs(Date.now() - startTimestampRef.current);
+    }, 50);
+  };
+
+  const stopStopwatch = () => {
+    if (!isRunning) return;
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    setElapsedMs(Date.now() - startTimestampRef.current);
+    setIsRunning(false);
+    setHasStopped(true);
+  };
+
+  const resetStopwatch = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    setElapsedMs(0);
+    setIsRunning(false);
+    setHasStopped(false);
+    setRecStatus("");
+  };
+
+  const formatStopwatch = (ms: number): string => {
+    const totalSec = Math.floor(ms / 1000);
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    const cs = Math.floor((ms % 1000) / 10);
+    return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}.${String(cs).padStart(2, "0")}`;
+  };
+
+  const submitRecord = async () => {
+    if (id === "") {
+      setRecStatus("팀 ID를 입력하세요");
+      return;
+    }
+    if (id < range.min || id > range.max) {
+      setRecStatus(`ID는 ${range.min}~${range.max} 범위만 가능합니다.`);
+      return;
+    }
+    if (!hasStopped || elapsedMs === 0) {
+      setRecStatus("스탑워치로 기록을 측정해주세요.");
+      return;
+    }
+    const totalSec = Math.floor(elapsedMs / 1000);
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    const recordStr = `${m}' ${String(s).padStart(2, "0")}"`;
+    setRecStatus("제출 중...");
+    try {
+      const res = await fetch("/api/record", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, record: recordStr }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setRecStatus(data?.error ?? "오류 발생");
+      } else {
+        setRecordValue(recordStr);
+        setRecStatus("");
+        setStep(2);
+      }
+    } catch (e) {
+      setRecStatus("네트워크 오류");
+    }
   };
 
   const submitColors = async () => {
@@ -104,7 +199,7 @@ export default function HomePage() {
         setStatus(data?.error ?? "오류 발생");
       } else {
         setStatus("");
-        setStep(2);
+        setStep(3);
       }
     } catch (e) {
       setStatus("네트워크 오류");
@@ -127,7 +222,7 @@ export default function HomePage() {
       } else {
         setStatus("");
         setTValue(turnString);
-        setStep(4);
+        setStep(5);
       }
     } catch (e) {
       setStatus("네트워크 오류");
@@ -145,13 +240,13 @@ export default function HomePage() {
         {step === 1 && (
           <div className="space-y-8 animate-fade-in">
             <section>
-              <h1 className="text-[2.5rem] font-bold text-[#1A1A1A] leading-tight mb-2">색상 순서 입력</h1>
-              <p className="text-[#666666] font-medium">팀 ID와 의사결정한 색상 순서를 입력해주세요.</p>
+              <h1 className="text-[2.5rem] font-bold text-[#1A1A1A] leading-tight mb-2">기록 측정</h1>
+              <p className="text-[#666666] font-medium">팀 ID 입력 후 스탑워치로 활동 시간을 측정해주세요.</p>
             </section>
 
             <section>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-[#1A1A1A]">팀 ID (1-100)</h2>
+                <h2 className="text-lg font-bold text-[#1A1A1A]">팀 ID ({range.min}-{range.max})</h2>
               </div>
               <input
                 type="number"
@@ -160,8 +255,116 @@ export default function HomePage() {
                 value={id}
                 min={range.min}
                 max={range.max}
+                disabled={isRunning}
                 onChange={(e) => setId(e.target.value === "" ? "" : Number(e.target.value))}
               />
+            </section>
+
+            <section>
+              <h2 className="text-lg font-bold text-[#1A1A1A] mb-4">스탑워치</h2>
+              <div className="p-8 bg-[#F8F9FA] rounded-3xl border border-[#EEEEEE] flex flex-col items-center gap-6">
+                <div
+                  className={`text-6xl font-black tabular-nums tracking-tight transition-colors ${
+                    isRunning ? "text-[#E60012]" : hasStopped ? "text-[#1A1A1A]" : "text-[#999999]"
+                  }`}
+                >
+                  {formatStopwatch(elapsedMs)}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 w-full">
+                  {!isRunning ? (
+                    <button
+                      onClick={startStopwatch}
+                      disabled={id === ""}
+                      className={`py-4 rounded-2xl font-bold text-lg transition-all flex items-center justify-center gap-2 ${
+                        id === ""
+                          ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                          : "bg-[#34C759] text-white hover:bg-green-600 active:scale-[0.98] shadow-md"
+                      }`}
+                    >
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                      {hasStopped ? "재시작" : "시작"}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={stopStopwatch}
+                      className="py-4 rounded-2xl bg-[#E60012] text-white font-bold text-lg hover:bg-red-700 transition-all active:scale-[0.98] shadow-md flex items-center justify-center gap-2"
+                    >
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="6" y="6" width="12" height="12" rx="1" />
+                      </svg>
+                      종료
+                    </button>
+                  )}
+
+                  <button
+                    onClick={resetStopwatch}
+                    disabled={isRunning || (elapsedMs === 0 && !hasStopped)}
+                    className={`py-4 rounded-2xl border-2 font-bold text-lg transition-all flex items-center justify-center gap-2 ${
+                      isRunning || (elapsedMs === 0 && !hasStopped)
+                        ? "border-[#EEEEEE] text-[#CCCCCC] cursor-not-allowed"
+                        : "border-[#666666] text-[#666666] hover:bg-gray-50 active:scale-[0.98]"
+                    }`}
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M3 12a9 9 0 109-9M3 12l3-3M3 12l3 3" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    초기화
+                  </button>
+                </div>
+
+                {hasStopped && (
+                  <div className="w-full text-center p-3 bg-white rounded-2xl border border-[#EEEEEE]">
+                    <p className="text-xs font-black text-[#999999] uppercase tracking-widest mb-1">최종 기록</p>
+                    <p className="text-2xl font-black text-[#E60012] tabular-nums">
+                      {Math.floor(elapsedMs / 60000)}' {String(Math.floor((elapsedMs % 60000) / 1000)).padStart(2, "0")}"
+                    </p>
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section className="pt-4">
+              <button
+                className={`btn-primary ${(id === "" || !hasStopped) ? "opacity-50 grayscale pointer-events-none" : ""}`}
+                onClick={submitRecord}
+                disabled={id === "" || !hasStopped || recStatus === "제출 중..."}
+              >
+                {recStatus === "제출 중..." ? (
+                    <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                ) : "기록 제출"}
+                {!recStatus && (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M5 12h14M12 5l7 7-7 7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                )}
+              </button>
+
+              {recStatus && recStatus !== "제출 중..." && (
+                <div className="mt-4 text-center p-4 rounded-2xl font-bold border animate-fade-in bg-red-50 border-red-100 text-[#E60012]">
+                  {recStatus}
+                </div>
+              )}
+            </section>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div className="space-y-8 animate-fade-in">
+            <section>
+              <h1 className="text-[2.5rem] font-bold text-[#1A1A1A] leading-tight mb-2">색상 순서 입력</h1>
+              <p className="text-[#666666] font-medium">의사결정한 색상 순서를 입력해주세요.</p>
+            </section>
+
+            <section>
+              <div className="p-4 bg-[#F8F9FA] rounded-2xl border border-[#EEEEEE] flex items-center justify-between">
+                <span className="text-sm font-bold text-[#666666]">팀 #{id}</span>
+                {recordValue && (
+                  <span className="text-sm font-black text-[#E60012] tabular-nums">기록 {recordValue}</span>
+                )}
+              </div>
             </section>
 
             <section>
@@ -268,7 +471,7 @@ export default function HomePage() {
           </div>
         )}
 
-        {step === 2 && (
+        {step === 3 && (
           <div className="space-y-8 animate-fade-in text-center py-12">
             <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6">
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -301,7 +504,7 @@ export default function HomePage() {
             <button
               className={`btn-primary ${!isTurnEnabled ? "opacity-50 grayscale cursor-not-allowed" : ""}`}
               onClick={() => {
-                if (isTurnEnabled) setStep(3);
+                if (isTurnEnabled) setStep(4);
               }}
               disabled={!isTurnEnabled}
             >
@@ -332,7 +535,7 @@ export default function HomePage() {
           </div>
         )}
 
-        {step === 3 && (
+        {step === 4 && (
           <div className="space-y-8 animate-fade-in">
             <section>
               <h1 className="text-[2.5rem] font-bold text-[#1A1A1A] leading-tight mb-2">턴 수 입력</h1>
@@ -406,7 +609,7 @@ export default function HomePage() {
           </div>
         )}
 
-        {step === 4 && (
+        {step === 5 && (
           <div className="space-y-8 animate-fade-in text-center py-12">
             <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6">
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -425,6 +628,10 @@ export default function HomePage() {
                 <div className="flex justify-between items-center py-2 border-b border-[#EEEEEE]">
                   <span className="text-[#666666]">팀 ID</span>
                   <span>{id}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-[#EEEEEE]">
+                  <span className="text-[#666666]">기록</span>
+                  <span className="text-[#E60012] tabular-nums">{recordValue || "-"}</span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-[#EEEEEE]">
                   <span className="text-[#666666]">색상 순서</span>
